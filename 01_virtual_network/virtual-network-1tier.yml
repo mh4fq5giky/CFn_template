@@ -1,0 +1,300 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a virtual network with a 1-tier architecture
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "Subnet Configuration"
+        Parameters:
+          - SubnetType
+          - SubnetCount
+      - Label:
+          default: "Connectivity Options"
+        Parameters:
+          - EnableS3VPCEndpoint
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  SubnetType:
+    Type: String
+    Default: Public
+    AllowedValues: [ Public, Private ]
+    Description: "Specify whether to create public or private subnets."
+
+  SubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of public subnets to deploy. Use 1 for a single availability zone (AZ) or 2 for multiple AZs."
+
+  EnableS3VPCEndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for Amazon S3."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for S3."
+
+# =======================================
+# Mappings
+# =======================================
+Mappings:
+  VPC:
+    prd:
+      VPCCIDR: "10.10.0.0/16"
+      PublicSubnet1CIDR: "10.10.1.0/24"
+      PublicSubnet2CIDR: "10.10.2.0/24"
+      PublicSubnet3CIDR: "10.10.3.0/24"
+      PrivateSubnet1CIDR: "10.10.11.0/24"
+      PrivateSubnet2CIDR: "10.10.12.0/24"
+      PrivateSubnet3CIDR: "10.10.13.0/24"
+    stg:
+      VPCCIDR: "10.20.0.0/16"
+      PublicSubnet1CIDR: "10.20.1.0/24"
+      PublicSubnet2CIDR: "10.20.2.0/24"
+      PublicSubnet3CIDR: "10.20.3.0/24"
+      PrivateSubnet1CIDR: "10.20.11.0/24"
+      PrivateSubnet2CIDR: "10.20.12.0/24"
+      PrivateSubnet3CIDR: "10.20.13.0/24"
+    dev:
+      VPCCIDR: "10.30.0.0/16"
+      PublicSubnet1CIDR: "10.30.1.0/24"
+      PublicSubnet2CIDR: "10.30.2.0/24"
+      PublicSubnet3CIDR: "10.30.3.0/24"
+      PrivateSubnet1CIDR: "10.30.11.0/24"
+      PrivateSubnet2CIDR: "10.30.12.0/24"
+      PrivateSubnet3CIDR: "10.30.13.0/24"
+
+# =======================================
+# Conditions
+# =======================================
+Conditions:
+  IsPublicSubnet: !Equals [ !Ref SubnetType, Public ]
+  IsPrivateSubnet: !Equals [ !Ref SubnetType, Private ]
+  IsSubnet2AZ: !Or [ !Equals [ !Ref SubnetCount, 2 ], !Equals [ !Ref SubnetCount, 3 ]]
+  IsSubnet3AZ: !Equals [ !Ref SubnetCount, 3 ]
+  CreateS3Endpoint: !Equals [ !Ref EnableS3VPCEndpoint, true ]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # VPC
+  # -------------------------------------
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !FindInMap [ VPC, !Ref Environment, VPCCIDR ]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-vpc"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Internet Gateway
+  # -------------------------------------
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Condition: IsPublicSubnet
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-igw"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  VPCGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: IsPublicSubnet
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # -------------------------------------
+  # Subnet
+  # -------------------------------------
+  Subnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      VpcId: !Ref VPC
+      CidrBlock: !If
+        - IsPublicSubnet
+        - !FindInMap [ VPC, !Ref Environment, PublicSubnet1CIDR ]
+        - !FindInMap [ VPC, !Ref Environment, PrivateSubnet1CIDR ]
+      MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  Subnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsSubnet2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+      VpcId: !Ref VPC
+      CidrBlock: !If
+        - IsPublicSubnet
+        - !FindInMap [ VPC, !Ref Environment, PublicSubnet2CIDR ]
+        - !FindInMap [ VPC, !Ref Environment, PrivateSubnet2CIDR ]
+      MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  Subnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsSubnet3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, !GetAZs "" ]
+      VpcId: !Ref VPC
+      CidrBlock: !If
+        - IsPublicSubnet
+        - !FindInMap [ VPC, !Ref Environment, PublicSubnet3CIDR ]
+        - !FindInMap [ VPC, !Ref Environment, PrivateSubnet3CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Route Table
+  # -------------------------------------
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # ---------------------------------------
+  # Routing
+  # ---------------------------------------
+  PublicSubnetToInternetRoute:
+    Type: "AWS::EC2::Route"
+    Condition: IsPublicSubnet
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # ---------------------------------------
+  # RouteTable Associate
+  # ---------------------------------------
+  Subnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref Subnet1
+      RouteTableId: !Ref RouteTable
+
+  Subnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsSubnet2AZ
+    Properties:
+      SubnetId: !Ref Subnet2
+      RouteTableId: !Ref RouteTable
+
+  Subnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsSubnet3AZ
+    Properties:
+      SubnetId: !Ref Subnet3
+      RouteTableId: !Ref RouteTable
+
+  # -------------------------------------
+  # S3 VPC Endpoint
+  # -------------------------------------
+  EndpointS3:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateS3Endpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref RouteTable
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  VPC:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-vpc"
+
+  VPCCIDR:
+    Value: !FindInMap [ VPC, !Ref Environment, VPCCIDR ]
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-vpc-cidr"
+
+  Subnets:
+    Value: !If
+      - IsSubnet3AZ
+      - !Join [ ",", [ !Ref Subnet1, !Ref Subnet2, !Ref Subnet3 ]]
+      - !If
+        - IsSubnet2AZ
+        - !Join [ ",", [ !Ref Subnet1, !Ref Subnet2 ]]
+        - !Ref Subnet1
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnets"
+
+  Subnet1:
+    Value: !Ref Subnet1
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet1"
+
+  Subnet2:
+    Value: !Ref Subnet2
+    Condition: IsSubnet2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet2"
+
+  Subnet3:
+    Value: !Ref Subnet3
+    Condition: IsSubnet3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet3"
+
+  RouteTable:
+    Value: !Ref RouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-rtb"
