@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Sets up CloudWatch-related VPC endpoints and security groups."
+
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "Endpoint Option"
+        Parameters:
+          - EnableSSMEndpoint
+          - EnableCloudWatchEndpoint
+          - EnableKMSEndpoint
+          - EnableECREndpoint          
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  EnableSSMEndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for SSM."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for SSM."
+
+  EnableCloudWatchEndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for CloudWatch."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for CloudWatch."
+
+  EnableKMSEndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for KMS."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for KMS."
+
+  EnableECREndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for ECR."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for ECR."
+
+# =======================================
+# Conditions
+# =======================================
+Conditions:
+  CreateSSMEndpoint: !Equals [ !Ref EnableSSMEndpoint, true ]
+  CreateCloudWatchEndpoint: !Equals [ !Ref EnableCloudWatchEndpoint, true ]
+  CreateKMSEndpoint: !Equals [ !Ref EnableKMSEndpoint, true ]
+  CreateECREndpoint: !Equals [ !Ref EnableECREndpoint, true ]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # SSM Endpoint SecurityGroup
+  # -------------------------------------
+  SSMEndpointSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Condition: CreateSSMEndpoint
+    Properties:
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-SSMEndpoint-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      SecurityGroupIngress:
+        - CidrIp: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc-cidr" }}
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443  
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  CloudWatchEndpointSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Condition: CreateCloudWatchEndpoint
+    Properties:
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-SSMVPCEndpoint-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      SecurityGroupIngress:
+        - CidrIp: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc-cidr" }}
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443  
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  KMSEndpointSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Condition: CreateKMSEndpoint
+    Properties:
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-KMSEndpoint-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc"}}
+      SecurityGroupIngress:
+        - CidrIp: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc-cidr"}}
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443  
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-KMSEndpoint-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  ECREndpointSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Condition: CreateECREndpoint
+    Properties:
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-ECREndpoint-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      SecurityGroupIngress:
+        - CidrIp: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc-cidr" }}
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443  
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-ECREndpoint-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # SSM EndPoint
+  # -------------------------------------
+  SSMEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateSSMEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SSMEndpointSecurityGroup
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "ssm" ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  SSMMessagesEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateSSMEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SSMEndpointSecurityGroup
+      ServiceName: !Join [".", [ "com.amazonaws", !Ref "AWS::Region", "ssmmessages" ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  EC2MessagesEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateSSMEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SSMEndpointSecurityGroup
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "ec2messages" ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # CloudWatch EndPoint
+  # -------------------------------------
+  logsEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateCloudWatchEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref CloudWatchEndpointSecurityGroup
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", logs ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  MonitoringEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateCloudWatchEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref CloudWatchEndpointSecurityGroup
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", monitoring ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  EventsEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateCloudWatchEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref CloudWatchEndpointSecurityGroup
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", events ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # KMS EndPoint
+  # -------------------------------------
+  # KMS EndPoint
+  KMSEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateKMSEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !Ref KMSEndpointSecurityGroup
+      VpcEndpointType: Interface
+      ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "kms" ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-KMSEndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # ECR EndPoint
+  # -------------------------------------
+  ECREndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateECREndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref ECREndpointSecurityGroup
+      ServiceName: !Join [ ".", ["com.amazonaws", !Ref "AWS::Region", "ecr.dkr" ]]
+      SubnetIds:
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpcEndpointType: Interface
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-ECREndpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  SSMEndpointSecurityGroup:
+    Value: !Ref SSMEndpointSecurityGroup
+    Condition: CreateSSMEndpoint
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-SSMEndpoint-sg"
+
+  CloudWatchEndpointSecurityGroup:
+    Value: !Ref CloudWatchEndpointSecurityGroup
+    Condition: CreateCloudWatchEndpoint
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint-sg"
+
+  KMSEndpointSecurityGroup:
+    Value: !Ref KMSEndpointSecurityGroup
+    Condition: CreateKMSEndpoint
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-KMSEndpoint-sg"
+
+  ECREndpointSecurityGroup:
+    Value: !Ref ECREndpointSecurityGroup
+    Condition: CreateECREndpoint
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-ECREndpoint-sg"

@@ -1,0 +1,219 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template creates an ALB
+
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "InternetALB Configuration"
+        Parameters:
+          - InternetALBName
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ "dev", "stg", "prd" ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  InternetALBName:
+    Type: String
+    Default: web
+
+  SSLCertificateArn:
+    Type: String
+    Default: ""
+    Description: "ARN of the SSL certificate for HTTPS."
+
+  WAFWebACLArn:
+    Type: String
+    Default: ""
+    Description: "ARN of the AWS WAF WebACL to associate with the ALB. Leave empty to disable."
+
+#  ALBAccessLogsBucket:
+#    Type: String
+#    Default: ""
+#    Description: "S3 bucket name for ALB access logs. Leave empty to disable logging."
+
+# =======================================
+# Conditions
+# =======================================
+Conditions:
+  IsWAFEnabled: !Not [!Equals [!Ref WAFWebACLArn, ""]]
+  IsSSLCertificateProvided: !Not [!Equals [!Ref SSLCertificateArn, ""]]
+# IsLoggingEnabled: !Not [!Equals [!Ref ALBAccessLogsBucket, ""]]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # Target Group
+  # -------------------------------------
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc"}}
+      Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-tg"
+      Protocol: HTTP
+      Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: traffic-port
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 10
+      Matcher: 
+        HttpCode: 200
+      Tags: 
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-tg"
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+      #Targets: 
+      # - Id: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-${ServerKind}-EC2InstanceId"}}
+      #   Port: 80
+
+  # -------------------------------------
+  # Internet ALB
+  # -------------------------------------
+  InternetALB:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+#   DependsOn: LogBucketPolicy
+    Properties: 
+      Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb"
+      Scheme: internet-facing
+      LoadBalancerAttributes: 
+        - Key: deletion_protection.enabled
+          Value: true
+        - Key: idle_timeout.timeout_seconds
+          Value: 60
+#       - Key: access_logs.s3.enabled
+#         Value: !If [IsLoggingEnabled, true, false]
+#       - Key: access_logs.s3.bucket
+#         Value: !If [IsLoggingEnabled, !Ref ALBAccessLogsBucket, ""]
+#       - Key: access_logs.s3.prefix
+#         Value: !If [IsLoggingEnabled, !Sub "${PJPrefix}-${Environment}-alb-logs", ""]
+      SecurityGroups:
+        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-albsg"}}
+      Subnets: 
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnets" }}]
+      Tags: 
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Listener
+  # -------------------------------------
+  ALBListenerHTTPS: 
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Condition: IsSSLCertificateProvided
+    Properties: 
+      LoadBalancerArn: !Ref InternetALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref SSLCertificateArn
+      DefaultActions: 
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+
+  ALBListenerRedirect:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref InternetALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: 443
+            StatusCode: HTTP_301
+
+  ALBWafAssociation:
+    Type: "AWS::WAFv2::WebACLAssociation"
+    Condition: IsWAFEnabled
+    Properties:
+      ResourceArn: !Ref InternetALB
+      WebACLArn: !Ref WAFWebACLArn
+
+  # -------------------------------------
+  # S3
+  # -------------------------------------
+#  LogBucket:
+#    Type: "AWS::S3::Bucket"
+#    Properties:
+#      BucketName: !Join [ "-", [ !Ref PJPrefix, !Ref Environment, alb-logs ] ]
+#      BucketEncryption:
+#        ServerSideEncryptionConfiguration:
+#        - ServerSideEncryptionByDefault:
+#            SSEAlgorithm: AES256
+#      PublicAccessBlockConfiguration:
+#        BlockPublicAcls: true
+#        BlockPublicPolicy: true
+#        IgnorePublicAcls: true
+#        RestrictPublicBuckets: true
+#      LifecycleConfiguration:
+#        Rules:
+#          - ExpirationInDays: 30
+#            Status: Enabled
+
+#  LogBucketPolicy:
+#    Type: "AWS::S3::BucketPolicy"
+#    Properties:
+#      Bucket: !Ref LogBucket
+#      PolicyDocument:
+#        Statement:
+#          - Action:
+#            - s3:PutObject
+#            Effect: Allow
+#            Resource:
+#            - !Sub arn:aws:s3:::${LogBucket}/*
+#            Principal:
+#              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  ALBDNSName:
+    Value: !GetAtt InternetALB.DNSName
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb-dnsname"
+
+  ALBArn:
+    Value: !Ref InternetALB
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb-arn"

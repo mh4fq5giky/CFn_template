@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create an Aurora MySQL
+
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "RDS Configuration"
+        Parameters:
+          - DBMasterUserName
+          - DBMasterUserPassword
+          - DBSnapshotArn
+          - EnableMultiAz
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ "dev", "stg", "prd" ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  DBMasterUserName:
+    Type: String
+    Default: master
+    Description: "The name of the master user for the RDS instance. This user will have full administrative privileges."
+
+  DBMasterUserPassword:
+    Type: String
+    NoEcho: true
+    Description: "The password for the master user on the RDS instance. It must be at least 8 characters long and comply with RDS password complexity requirements."
+
+  DBSnapshotArn:
+    Type: String
+    Description: "The ARN of the snapshot to restore the Aurora cluster from. This can be used to create a new Aurora cluster from a specific snapshot."
+
+  EnableMultiAz:
+    Type: String
+    Default: false
+    AllowedValues: [ "true", "false" ]
+    Description: "Indicates whether the Aurora cluster should be deployed in a Multi-AZ configuration. Set to 'true' to enable Multi-AZ for high availability, or 'false' to deploy a single instance."
+
+# =======================================
+# Mappings
+# =======================================
+Mappings:
+  RDS:
+    dev:
+      InstanceType: db.t3.medium
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 18:00-19:00  # in UTC
+      PreferredMaintenanceWindow: sun:19:30-sun:20:00  # in UTC
+    stg:
+      InstanceType: db.t3.medium
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 18:00-19:00  # in UTC
+      PreferredMaintenanceWindow: sun:19:30-sun:20:00  # in UTC
+    prd:
+      InstanceType: db.t3.medium
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 18:00-19:00  # in UTC
+      PreferredMaintenanceWindow: sun:19:30-sun:20:00  # in UTC
+
+#  Route53:
+#    dev:
+#      HostedZoneName: dev.example.com.
+#    stg:
+#      HostedZoneName: stg.example.com.
+#    prd:
+#      HostedZoneName: prd-example.com.
+
+# =======================================
+# Condition
+# =======================================
+Conditions:
+  IsBrandNewDB: !Equals [ !Ref DBSnapshotArn, "" ]
+  EnableMultiAz: !Equals [ !Ref EnableMultiAz, "true" ]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # DB Subnet Group
+  # -------------------------------------
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupName: !Sub "${PJPrefix}-${Environment}-DB-Subnet"
+      DBSubnetGroupDescription: "-"
+      SubnetIds:
+        - !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-RDSPrivate-Subnets" }}]
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-DB-Subnet-group"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # DB Parameter Group
+  # -------------------------------------
+  # DB Parameter Group
+  DBParameterGroup:
+    Type: "AWS::RDS::DBParameterGroup"
+    Properties:
+      Description: "The RDS DB parameter group used for the Aurora Cluster's instance(s). This group contains configuration settings specific to the database instance(s), such as the maximum number of allowed connections."
+      Family: aurora-mysql8.0
+      Parameters:
+        max_connections: 1000
+
+  # DB Cluster Parameter Group
+  DBClusterParameterGroup:
+    Type: "AWS::RDS::DBClusterParameterGroup"
+    Properties:
+      Description: "The RDS DB cluster parameter group used for the Aurora cluster. This group contains configuration settings that apply to the entire DB cluster, such as character set and collation settings for the database."
+      Family: aurora-mysql8.0
+      Parameters:
+        character_set_client: utf8mb4
+        character_set_connection: utf8mb4
+        character_set_database: utf8mb4
+        character_set_results: utf8mb4
+        character_set_server: utf8mb4
+        collation_connection: utf8mb4_bin
+        collation_server: utf8mb4_bin
+
+  # -------------------------------------
+  # DB Cluster
+  # -------------------------------------
+  # DB Cluster
+  DBCluster:
+    Type: "AWS::RDS::DBCluster"
+    DeletionPolicy: Snapshot
+    Properties:
+      Engine: aurora-mysql
+      EngineVersion: 8.0.mysql_aurora.3.05.2
+      SnapshotIdentifier:
+        !If [IsBrandNewDB, !Ref "AWS::NoValue", !Ref "DBSnapshotArn" ]
+      DBClusterIdentifier: !Sub "${PJPrefix}-${Environment}-cluster"
+      MasterUsername:
+        !If [ IsBrandNewDB, !Ref "DBMasterUserName", !Ref "AWS::NoValue" ]
+      MasterUserPassword:
+        !If [ IsBrandNewDB, !Ref "DBMasterUserPassword", !Ref "AWS::NoValue" ]
+      BackupRetentionPeriod: !FindInMap [ RDS, !Ref "Environment", "BackupRetentionPeriod" ]
+      PreferredBackupWindow: !FindInMap [ RDS, !Ref "Environment", "PreferredBackupWindow" ]
+      PreferredMaintenanceWindow: !FindInMap [ RDS, !Ref "Environment", "PreferredMaintenanceWindow" ]
+      DBSubnetGroupName: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-DB-SubnetGroupName" }}
+      DBClusterParameterGroupName: !Ref "DBClusterParameterGroup"
+      StorageEncrypted: true
+      EngineMode: provisioned
+      VpcSecurityGroupIds:
+        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-mysqlsg" }}
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-DBCluster"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # DB Instance
+  # -------------------------------------
+  # DB Instance 1
+  DBInstance1:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      Engine: aurora-mysql
+      DBClusterIdentifier: !Ref DBCluster
+      DBInstanceClass: !FindInMap [ RDS, !Ref Environment, InstanceType ]
+      DBSubnetGroupName: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-DB-SubnetGroupName" }}
+      DBParameterGroupName: !Ref DBParameterGroup
+      AutoMinorVersionUpgrade: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-DBinstance1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # DB Instance 2
+  DBInstance2:
+    Type: "AWS::RDS::DBInstance"
+    Condition: EnableMultiAz
+    Properties:
+      Engine: aurora-mysql
+      DBClusterIdentifier: !Ref DBCluster
+      DBInstanceClass: !FindInMap [ RDS, !Ref Environment, InstanceType ]
+      DBSubnetGroupName: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-DB-SubnetGroupName" }}
+      DBParameterGroupName: !Ref DBParameterGroup
+      AutoMinorVersionUpgrade: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-DBinstance2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # define Route 53 records
+  # -------------------------------------
+  # RDS Writer Dns Record
+#  RdsWriterDnsRecord:
+#    Type: "AWS::Route53::RecordSet"
+#    Properties:
+#      HostedZoneName:
+#        Fn::ImportValue: 
+#          !Sub "${PJPrefix}-${Environment}-Route53HostedZoneName"
+#      Name:
+#        Fn::Join:
+#          - ""
+#          - - "rds-writer."
+#            - Fn::ImportValue: !Sub "${PJPrefix}-${Environment}-Route53HostedZoneName"
+#      Type: CNAME
+#      ResourceRecords: !GetAtt DBCluster.Endpoint.Address
+#      TTL: 60
+#
+#  # RDS Reader Dns Record
+#  RdsReaderDnsRecord:
+#    Type: "AWS::Route53::RecordSet"
+#    Properties:
+#      HostedZoneName:
+#        Fn::ImportValue:
+#          !Sub "${Environment}-Route53HostedZoneName"
+#      Name:
+#        Fn::Join:
+#          - ""
+#          - - "rds-reader."
+#            - Fn::ImportValue: !Sub "${PJPrefix}-${Environment}-Route53HostedZoneName"
+#      Type: CNAME
+#      ResourceRecords: !GetAtt DBCluster.ReadEndpoint.Address
+#      TTL: 60
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  DBCluster:
+    Value: !Ref DBCluster
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-DBCluster"
+
+#  RdsWriterDnsRecord:
+#    Value: !Ref RdsWriterDnsRecord
+#    Export:
+#      Name: !Sub "${PJPrefix}-${Environment}-RdsWriterDnsRecord"
+#
+#  RdsReaderDnsRecord:
+#    Value: !Ref RdsReaderDnsRecord
+#    Export:
+#      Name: !Sub "${PJPrefix}-${Environment}-RdsReaderDnsRecord"
