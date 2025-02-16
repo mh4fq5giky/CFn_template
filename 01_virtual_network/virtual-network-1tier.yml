@@ -251,6 +251,11 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcEndpointType: Gateway
       RouteTableIds: !Ref RouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-S3Endpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
 
 # =======================================
 # Outputs
