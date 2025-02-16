@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: "Create a virtual network with a 2-tier architecture."
+Description: "Create a virtual network with a 3-tier architecture."
 # =======================================
 # Metadata
 # =======================================
@@ -20,6 +20,7 @@ Metadata:
       - Label:
           default: "Connectivity Options"
         Parameters:
+          - EnableInternetGateway
           - EnableNATGateway
           - EnableS3VPCEndpoint
 
@@ -59,6 +60,13 @@ Parameters:
     AllowedValues: [ 1, 2, 3 ]
     Default: 2
     Description: "Specify the number of private subnets for RDS deployment. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  EnableInternetGateway:
+    Type: String
+    Default: true
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the Internet Gateway."
+    ConstraintDescription: "Set to 'true' to enable the Internet Gateway."
 
   EnableNATGateway:
     Type: String
@@ -123,6 +131,7 @@ Conditions:
   IsPrivate3AZ: !Equals [ !Ref PrivateSubnetCount, 3 ]
   IsRDSPrivate2AZ: !Or [ !Equals [!Ref RDSPrivateSubnetCount, 2 ], !Equals [!Ref RDSPrivateSubnetCount, 3 ]]
   IsRDSPrivate3AZ: !Equals [ !Ref RDSPrivateSubnetCount, 3 ]
+  CreateInternetGateway: !Equals [ !Ref EnableInternetGateway, true ]
   CreateNATGateway: !Equals [ !Ref EnableNATGateway, true ]
   CreateS3Endpoint: !Equals [ !Ref EnableS3VPCEndpoint, true ]
 
@@ -152,6 +161,7 @@ Resources:
   # -------------------------------------
   InternetGateway:
     Type: "AWS::EC2::InternetGateway"
+    Condition: CreateInternetGateway
     Properties:
       Tags:
         - Key: Name
@@ -161,6 +171,7 @@ Resources:
 
   VPCGatewayAttachment:
     Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: CreateInternetGateway
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
@@ -334,10 +345,11 @@ Resources:
   # ---------------------------------------
   PublicSubnetToInternetRoute:
     Type: "AWS::EC2::Route"
+    Condition: CreateInternetGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
+      GatewayId: !If [ CreateInternetGateway, !Ref InternetGateway, !Ref "AWS::NoValue" ]
 
   PrivateSubnetToInternetRoute:
     Type: "AWS::EC2::Route"
