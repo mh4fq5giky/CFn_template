@@ -329,6 +329,15 @@ Resources:
               echo "DenyUsers ec2-user" | tee --append /etc/ssh/sshd_config
               systemctl restart sshd
 
+              # Get instance metadata using IMDSv2
+              TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
+
+              # Retrieve metadata keys and values
+              curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/ | while read -r KEY; do
+                VALUE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -sS http://169.254.169.254/latest/meta-data/$KEY)
+                echo "$KEY: $VALUE" >> /home/${UserId}/ec2-metadata.txt
+              done
+
               # Update all installed packages to the latest versions
               dnf -y update
 
