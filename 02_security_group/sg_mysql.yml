@@ -12,7 +12,8 @@ Metadata:
         Parameters:
           - PJPrefix
           - Environment
-          - ServerKind
+          - VPCID
+          - UseWebSG
 
 # =======================================
 # Parameters
@@ -30,7 +31,7 @@ Parameters:
   Environment:
     Type: String
     Default: dev
-    AllowedValues: [ "dev", "stg", "prd" ]
+    AllowedValues: [ dev, stg, prd ]
     Description: "Deployment environment (dev, stg, or prd)."
 
   VPCID:
@@ -41,14 +42,14 @@ Parameters:
   UseWebSG:
     Type: String
     Default: true
-    AllowedValues: [ "true", "false" ]
+    AllowedValues: [ true, false ]
     Description: "Whether to use EC2 Instance Connect for instance connection."
 
 # =======================================
 # Condition
 # =======================================
 Conditions:
-  IsUseWebSG: !Equals [!Ref UseWebSG, "true" ]
+  IsUseWebSG: !Equals [ !Ref UseWebSG, true ]
 
 # =======================================
 # Resources
@@ -61,7 +62,7 @@ Resources:
   SecurityGroupForRDS:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
-      GroupDescription: !Sub "${PJPrefix}-${Environment}-mysqlsg"
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-mysql-sg"
       VpcId: !Ref VPCID
       SecurityGroupIngress:
         - !If
@@ -70,11 +71,11 @@ Resources:
             FromPort: 3306
             ToPort: 3306
             SourceSecurityGroupId:
-              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-websg" }}
+              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-mysql-sg" }}
           - !Ref AWS::NoValue
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-mysqlsg"
+          Value: !Sub "${PJPrefix}-${Environment}-mysql-sg"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -85,4 +86,4 @@ Outputs:
   SecurityGroupId:
     Value: !Ref SecurityGroupForRDS
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-mysqlsg"
+      Name: !Sub "${PJPrefix}-${Environment}-mysql-sg"

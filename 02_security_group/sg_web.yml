@@ -12,7 +12,7 @@ Metadata:
         Parameters:
           - PJPrefix
           - Environment
-          - ServerKind
+          - VPCID
 
 # =======================================
 # Parameters
@@ -30,7 +30,7 @@ Parameters:
   Environment:
     Type: String
     Default: dev
-    AllowedValues: [ "dev", "stg", "prd" ]
+    AllowedValues: [ dev, stg, prd ]
     Description: "Deployment environment (dev, stg, or prd)."
 
   VPCID:
@@ -49,7 +49,7 @@ Resources:
   SecurityGroupForEC2:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
-      GroupDescription: !Sub "${PJPrefix}-${Environment}-websg"
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-web-sg"
       VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -66,7 +66,7 @@ Resources:
           CidrIp: "10.0.0.0/32"
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-websg"
+          Value: !Sub "${PJPrefix}-${Environment}-web-sg"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -77,4 +77,4 @@ Outputs:
   SecurityGroupId:
     Value: !Ref SecurityGroupForEC2
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-websg"
+      Name: !Sub "${PJPrefix}-${Environment}-web-sg"
