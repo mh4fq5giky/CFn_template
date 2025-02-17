@@ -331,21 +331,16 @@ Resources:
               echo "DenyUsers ec2-user" | tee --append /etc/ssh/sshd_config
               systemctl restart sshd
 
-              # Get instance metadata using IMDSv2
-              TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
-
-              # Retrieve metadata keys and values
-              curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/ | while read -r KEY; do
-                VALUE=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -sS http://169.254.169.254/latest/meta-data/$KEY)
-                echo "$KEY: $VALUE" >> /home/${UserId}/ec2-metadata.txt
-              done
-
               # Create a swap space and make it persistent after reboot.
               dd if=/dev/zero of=/swapfile bs=1M count=2048 status=progress
               chmod 600 /swapfile
               mkswap /swapfile
               swapon /swapfile
               echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+
+              sysctl vm.swappiness=10
+              sed -i 's/^vm.swappiness=.*/vm.swappiness=10/' /etc/sysctl.conf
+              sysctl -p
 
               # Update all installed packages to the latest versions
               dnf -y update
