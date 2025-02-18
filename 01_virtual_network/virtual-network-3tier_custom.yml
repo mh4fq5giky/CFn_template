@@ -1,0 +1,919 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create a virtual network with a 3-tier architecture."
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+#         - Environment
+          - Region
+      - Label:
+          default: "Prd Subnet Configuration"
+        Parameters:
+          - PrdPublicSubnetCount
+          - PrdPrivateSubnetCount
+          - PrdRDSPrivateSubnetCount
+      - Label:
+          default: "Prd Subnet Configuration"
+        Parameters:
+          - StgPublicSubnetCount
+          - StgPrivateSubnetCount
+          - StgRDSPrivateSubnetCount
+      - Label:
+          default: "Connectivity Options"
+        Parameters:
+          - EnableInternetGateway
+          - EnableNATGateway
+          - EnableS3VPCEndpoint
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+#  Environment:
+#    Type: String
+#    Default: dev
+#    AllowedValues: [ dev, stg, prd ]
+#    Description: "Deployment environment (dev, stg, or prd)."
+
+  Region:
+    Type: String
+    Default: ap-northeast-1
+    AllowedValues: [ ap-northeast-1, ap-northeast-3 ]
+    Description: "The AWS region where the resources will be deployed. Choose between ap-northeast-1 (Tokyo) and ap-northeast-3 (Osaka)."
+
+  PrdPublicSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of public subnets to deploy. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  PrdPrivateSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of private subnets to deploy. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  PrdRDSPrivateSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of private subnets for RDS deployment. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  StgPublicSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of public subnets to deploy. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  StgPrivateSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of private subnets to deploy. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  StgRDSPrivateSubnetCount:
+    Type: Number
+    AllowedValues: [ 1, 2, 3 ]
+    Default: 2
+    Description: "Specify the number of private subnets for RDS deployment. Use 1 for a single availability zone (AZ) or 2-3 for multiple AZs."
+
+  EnableInternetGateway:
+    Type: String
+    Default: true
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the Internet Gateway."
+    ConstraintDescription: "Set to 'true' to enable the Internet Gateway."
+
+  EnableNATGateway:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the NAT Gateway."
+    ConstraintDescription: "Set to 'true' to enable NAT Gateway."
+
+  EnableS3VPCEndpoint:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Enable or disable the VPC Endpoint for Amazon S3."
+    ConstraintDescription: "Set to 'true' to enable the VPC Endpoint for S3."
+
+# =======================================
+# Mappings
+# =======================================
+Mappings:
+  VPC:
+    prd:
+      VPCCIDR: "10.10.0.0/16"
+      PublicSubnet1CIDR: "10.10.1.0/24"
+      PublicSubnet2CIDR: "10.10.2.0/24"
+      PublicSubnet3CIDR: "10.10.3.0/24"
+      PrivateSubnet1CIDR: "10.10.11.0/24"
+      PrivateSubnet2CIDR: "10.10.12.0/24"
+      PrivateSubnet3CIDR: "10.10.13.0/24"
+      RDSPrivateSubnet1CIDR: "10.10.21.0/24"
+      RDSPrivateSubnet2CIDR: "10.10.22.0/24"
+      RDSPrivateSubnet3CIDR: "10.10.23.0/24"
+    stg:
+      PublicSubnet1CIDR: "10.10.101.0/24"
+      PublicSubnet2CIDR: "10.10.102.0/24"
+      PublicSubnet3CIDR: "10.10.103.0/24"
+      PrivateSubnet1CIDR: "10.10.111.0/24"
+      PrivateSubnet2CIDR: "10.10.112.0/24"
+      PrivateSubnet3CIDR: "10.10.113.0/24"
+      RDSPrivateSubnet1CIDR: "10.10.121.0/24"
+      RDSPrivateSubnet2CIDR: "10.10.122.0/24"
+      RDSPrivateSubnet3CIDR: "10.10.123.0/24"
+
+
+# =======================================
+# Conditions
+# =======================================
+Conditions:
+  IsPrdPublic2AZ: !Or [ !Equals [ !Ref PrdPublicSubnetCount, 2 ], !Equals [ !Ref PrdPublicSubnetCount, 3 ]]
+  IsPrdPublic3AZ: !Equals [ !Ref PrdPublicSubnetCount, 3 ]
+  IsPrdPrivate2AZ: !Or [ !Equals [ !Ref PrdPrivateSubnetCount, 2 ], !Equals [ !Ref PrdPrivateSubnetCount, 3 ]]
+  IsPrdPrivate3AZ: !Equals [ !Ref PrdPrivateSubnetCount, 3 ]
+  IsPrdRDSPrivate2AZ: !Or [ !Equals [!Ref PrdRDSPrivateSubnetCount, 2 ], !Equals [!Ref PrdRDSPrivateSubnetCount, 3 ]]
+  IsPrdRDSPrivate3AZ: !Equals [ !Ref PrdRDSPrivateSubnetCount, 3 ]
+
+  IsStgPublic2AZ: !Or [ !Equals [ !Ref StgPublicSubnetCount, 2 ], !Equals [ !Ref StgPublicSubnetCount, 3 ]]
+  IsStgPublic3AZ: !Equals [ !Ref StgPublicSubnetCount, 3 ]
+  IsStgPrivate2AZ: !Or [ !Equals [ !Ref StgPrivateSubnetCount, 2 ], !Equals [ !Ref StgPrivateSubnetCount, 3 ]]
+  IsStgPrivate3AZ: !Equals [ !Ref StgPrivateSubnetCount, 3 ]
+  IsStgRDSPrivate2AZ: !Or [ !Equals [!Ref StgRDSPrivateSubnetCount, 2 ], !Equals [!Ref StgRDSPrivateSubnetCount, 3 ]]
+  IsStgRDSPrivate3AZ: !Equals [ !Ref StgRDSPrivateSubnetCount, 3 ]
+
+  CreateInternetGateway: !Equals [ !Ref EnableInternetGateway, true ]
+  CreateNATGateway: !Equals [ !Ref EnableNATGateway, true ]
+  CreateS3Endpoint: !Equals [ !Ref EnableS3VPCEndpoint, true ]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # VPC
+  # -------------------------------------
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !FindInMap [ VPC, prd, VPCCIDR ]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-vpc"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Internet Gateway
+  # -------------------------------------
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Condition: CreateInternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-igw"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  VPCGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: CreateInternetGateway
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # -------------------------------------
+  # Public Subnet
+  # -------------------------------------
+  PrdPublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PublicSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-public-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdPublicSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdPublic2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PublicSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-public-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdPublicSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdPublic3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PublicSubnet3CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-public-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PublicSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-public-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPublicSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgPublic2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PublicSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-public-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPublicSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgPublic3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PublicSubnet3CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-public-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Private Subnet
+  # -------------------------------------
+  PrdPrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PrivateSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-private-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdPrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdPrivate2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PrivateSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-private-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdPrivateSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdPrivate3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, PrivateSubnet3CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-private-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PrivateSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-private-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgPrivate2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PrivateSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-private-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPrivateSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgPrivate3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, PrivateSubnet3CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-private-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # RDS Private Subnet
+  # -------------------------------------
+  PrdRDSPrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, RDSPrivateSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-rdsprivate-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdRDSPrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdRDSPrivate2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, RDSPrivateSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-rdsprivate-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdRDSPrivateSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsPrdRDSPrivate3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, prd, RDSPrivateSubnet3CIDR ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-rdsprivate-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgRDSPrivateSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [ 0, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, RDSPrivateSubnet1CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-rdsprivate-subnet1"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgRDSPrivateSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgRDSPrivate2AZ
+    Properties:
+      AvailabilityZone: !Select [ 1, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, RDSPrivateSubnet2CIDR ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-rdsprivate-subnet2"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgRDSPrivateSubnet3:
+    Type: "AWS::EC2::Subnet"
+    Condition: IsStgRDSPrivate3AZ
+    Properties:
+      AvailabilityZone: !Select [ 2, Fn::GetAZs: !Ref Region ]
+      VpcId: !Ref VPC
+      CidrBlock: !FindInMap [ VPC, stg, RDSPrivateSubnet3CIDR ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-rdsprivate-subnet3"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # Route Table
+  # -------------------------------------
+  PrdPublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-public-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdPrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-private-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  PrdRDSPrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-rdsprivate-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-public-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgPrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-private-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  StgRDSPrivateRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-stg-rdsprivate-rtb"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # ---------------------------------------
+  # Routing
+  # ---------------------------------------
+  PublicSubnetToInternetRoute:
+    Type: "AWS::EC2::Route"
+    Condition: CreateInternetGateway
+    Properties:
+      RouteTableId: !Ref PrdPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !If [ CreateInternetGateway, !Ref InternetGateway, !Ref "AWS::NoValue" ]
+
+  PrivateSubnetToInternetRoute:
+    Type: "AWS::EC2::Route"
+    Condition: CreateNATGateway
+    Properties:
+      RouteTableId: !Ref PrdPrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !If [ CreateNATGateway, !Ref NatGateway, !Ref "AWS::NoValue" ]
+
+  # ---------------------------------------
+  # RouteTable Associate
+  # ---------------------------------------
+  PrdPublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PrdPublicSubnet1
+      RouteTableId: !Ref PrdPublicRouteTable
+
+  PrdPublicSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdPublic2AZ
+    Properties:
+      SubnetId: !Ref PrdPublicSubnet2
+      RouteTableId: !Ref PrdPublicRouteTable
+
+  PrdPublicSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdPublic3AZ
+    Properties:
+      SubnetId: !Ref PrdPublicSubnet3
+      RouteTableId: !Ref PrdPublicRouteTable
+
+  StgPublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref StgPublicSubnet1
+      RouteTableId: !Ref StgPublicRouteTable
+
+  StgPublicSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgPublic2AZ
+    Properties:
+      SubnetId: !Ref StgPublicSubnet2
+      RouteTableId: !Ref StgPublicRouteTable
+
+  StgPublicSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgPublic3AZ
+    Properties:
+      SubnetId: !Ref StgPublicSubnet3
+      RouteTableId: !Ref StgPublicRouteTable
+
+  PrdPrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PrdPrivateSubnet1
+      RouteTableId: !Ref PrdPrivateRouteTable
+
+  PrdPrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdPrivate2AZ
+    Properties:
+      SubnetId: !Ref PrdPrivateSubnet2
+      RouteTableId: !Ref PrdPrivateRouteTable
+
+  PrdPrivateSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdPrivate3AZ
+    Properties:
+      SubnetId: !Ref PrdPrivateSubnet3
+      RouteTableId: !Ref PrdPrivateRouteTable
+
+  StgPrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref StgPrivateSubnet1
+      RouteTableId: !Ref StgPrivateRouteTable
+
+  StgPrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgPrivate2AZ
+    Properties:
+      SubnetId: !Ref StgPrivateSubnet2
+      RouteTableId: !Ref StgPrivateRouteTable
+
+  StgPrivateSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgPrivate3AZ
+    Properties:
+      SubnetId: !Ref StgPrivateSubnet3
+      RouteTableId: !Ref StgPrivateRouteTable
+
+  PrdRDSPrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PrdRDSPrivateSubnet1
+      RouteTableId: !Ref PrdRDSPrivateRouteTable
+
+  PrdRDSPrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdRDSPrivate2AZ
+    Properties:
+      SubnetId: !Ref PrdRDSPrivateSubnet2
+      RouteTableId: !Ref PrdRDSPrivateRouteTable
+
+  PrdRDSPrivateSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsPrdRDSPrivate3AZ
+    Properties:
+      SubnetId: !Ref PrdRDSPrivateSubnet3
+      RouteTableId: !Ref PrdRDSPrivateRouteTable
+
+  StgRDSPrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref StgRDSPrivateSubnet1
+      RouteTableId: !Ref StgRDSPrivateRouteTable
+
+  StgRDSPrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgRDSPrivate2AZ
+    Properties:
+      SubnetId: !Ref StgRDSPrivateSubnet2
+      RouteTableId: !Ref StgRDSPrivateRouteTable
+
+  StgRDSPrivateSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Condition: IsStgRDSPrivate3AZ
+    Properties:
+      SubnetId: !Ref StgRDSPrivateSubnet3
+      RouteTableId: !Ref StgRDSPrivateRouteTable
+
+  # -------------------------------------
+  # NAT Gateway
+  # -------------------------------------
+  NatGatewayEIP:
+    Type: "AWS::EC2::EIP"
+    Condition: CreateNATGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-ngw-eip"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    Condition: CreateNATGateway
+    Properties:
+      SubnetId: !Ref PrdPublicSubnet1
+      AllocationId: !GetAtt "NatGatewayEIP.AllocationId"
+      ConnectivityType: public
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-ngw"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # S3 VPC Endpoint
+  # -------------------------------------
+  EndpointS3:
+    Type: "AWS::EC2::VPCEndpoint"
+    Condition: CreateS3Endpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref PrdPrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-prd-S3Endpoint"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  VPC:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${PJPrefix}-prd-vpc"
+
+  VPCCIDR:
+    Value: !FindInMap [ VPC, prd, VPCCIDR ]
+    Export:
+      Name: !Sub "${PJPrefix}-prd-vpc-cidr"
+
+  PrdPublicSubnets:
+    Value: !If
+      - IsPrdPublic3AZ
+      - !Join [ ",", [ !Ref PrdPublicSubnet1, !Ref PrdPublicSubnet2, !Ref PrdPublicSubnet3 ]]
+      - !If
+        - IsPrdPublic2AZ
+        - !Join [ ",", [ !Ref PrdPublicSubnet1, !Ref PrdPublicSubnet2 ]]
+        - !Ref PrdPublicSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-prd-public-subnets"
+
+  PrdPublicSubnet1:
+    Value: !Ref PrdPublicSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-public-subnet1"
+
+  PrdPublicSubnet2:
+    Value: !Ref PrdPublicSubnet2
+    Condition: IsPrdPublic2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-public-subnet2"
+
+  PrdPublicSubnet3:
+    Value: !Ref PrdPublicSubnet3
+    Condition: IsPrdPublic3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-public-subnet1"
+
+  PrdPrivateSubnets:
+    Value: !If
+      - IsPrdPrivate3AZ
+      - !Join [ ",", [ !Ref PrdPrivateSubnet1, !Ref PrdPrivateSubnet2, !Ref PrdPrivateSubnet3 ]]
+      - !If
+        - IsPrdPrivate2AZ
+        - !Join [ ",", [ !Ref PrdPrivateSubnet1, !Ref PrdPrivateSubnet2 ]]
+        - !Ref PrdPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-private-subnets"
+
+  PrdPrivateSubnet1:
+    Value: !Ref PrdPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-private-subnet1"
+
+  PrdPrivateSubnet2:
+    Value: !Ref PrdPrivateSubnet2
+    Condition: IsPrdPrivate2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-private-subnet2"
+
+  PrdPrivateSubnet3:
+    Value: !Ref PrdPrivateSubnet3
+    Condition: IsPrdPrivate3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-Prd-private-subnet3"
+
+  PrdRDSPrivateSubnets:
+    Value: !If
+      - IsPrdRDSPrivate3AZ
+      - !Join [ ",", [ !Ref PrdRDSPrivateSubnet1, !Ref PrdRDSPrivateSubnet2, !Ref PrdRDSPrivateSubnet3 ]]
+      - !If
+        - IsPrdRDSPrivate2AZ
+        - !Join [ ",", [ !Ref PrdRDSPrivateSubnet1, !Ref PrdRDSPrivateSubnet2 ]]
+        - !Ref PrdRDSPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-prd-rdsprivate-subnets"
+
+  PrdRDSPrivateSubnet1:
+    Value: !Ref PrdRDSPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-prd-rdsprivate-subnet1"
+
+  PrdRDSPrivateSubnet2:
+    Value: !Ref PrdRDSPrivateSubnet2
+    Condition: IsPrdRDSPrivate2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-prd-rdsprivate-subnet2"
+
+  PrdRDSPrivateSubnet3:
+    Value: !Ref PrdRDSPrivateSubnet3
+    Condition: IsPrdRDSPrivate3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-prd-rdsprivate-subnet3"
+
+  PrdPublicRouteTable:
+    Value: !Ref PrdPublicRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-prd-public-rtb"
+
+  PrdPrivateRouteTable:
+    Value: !Ref PrdPrivateRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-prd-private-rtb"
+
+  PrdRDSPrivateRouteTable:
+    Value: !Ref PrdRDSPrivateRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-prd-rdsprivate-rtb"
+
+  StgPublicSubnets:
+    Value: !If
+      - IsStgPublic3AZ
+      - !Join [ ",", [ !Ref StgPublicSubnet1, !Ref StgPublicSubnet2, !Ref StgPublicSubnet3 ]]
+      - !If
+        - IsStgPublic2AZ
+        - !Join [ ",", [ !Ref StgPublicSubnet1, !Ref StgPublicSubnet2 ]]
+        - !Ref StgPublicSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-public-subnets"
+
+  StgPublicSubnet1:
+    Value: !Ref StgPublicSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-public-subnet1"
+
+  StgPublicSubnet2:
+    Value: !Ref StgPublicSubnet2
+    Condition: IsStgPublic2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-public-subnet2"
+
+  StgPublicSubnet3:
+    Value: !Ref StgPublicSubnet3
+    Condition: IsStgPublic3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-public-subnet1"
+
+  StgPrivateSubnets:
+    Value: !If
+      - IsStgPrivate3AZ
+      - !Join [ ",", [ !Ref StgPrivateSubnet1, !Ref StgPrivateSubnet2, !Ref StgPrivateSubnet3 ]]
+      - !If
+        - IsStgPrivate2AZ
+        - !Join [ ",", [ !Ref StgPrivateSubnet1, !Ref StgPrivateSubnet2 ]]
+        - !Ref StgPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-private-subnets"
+
+  StgPrivateSubnet1:
+    Value: !Ref StgPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-private-subnet1"
+
+  StgPrivateSubnet2:
+    Value: !Ref StgPrivateSubnet2
+    Condition: IsStgPrivate2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-private-subnet2"
+
+  StgPrivateSubnet3:
+    Value: !Ref StgPrivateSubnet3
+    Condition: IsStgPrivate3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-private-subnet3"
+
+  StgRDSPrivateSubnets:
+    Value: !If
+      - IsStgRDSPrivate3AZ
+      - !Join [ ",", [ !Ref StgRDSPrivateSubnet1, !Ref StgRDSPrivateSubnet2, !Ref StgRDSPrivateSubnet3 ]]
+      - !If
+        - IsStgRDSPrivate2AZ
+        - !Join [ ",", [ !Ref StgRDSPrivateSubnet1, !Ref StgRDSPrivateSubnet2 ]]
+        - !Ref StgRDSPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-rdsprivate-subnets"
+
+  StgRDSPrivateSubnet1:
+    Value: !Ref StgRDSPrivateSubnet1
+    Export:
+      Name: !Sub "${PJPrefix}-stg-rdsprivate-subnet1"
+
+  StgRDSPrivateSubnet2:
+    Value: !Ref StgRDSPrivateSubnet2
+    Condition: IsStgRDSPrivate2AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-rdsprivate-subnet2"
+
+  StgRDSPrivateSubnet3:
+    Value: !Ref StgRDSPrivateSubnet3
+    Condition: IsStgRDSPrivate3AZ
+    Export:
+      Name: !Sub "${PJPrefix}-stg-rdsprivate-subnet3"
+
+  StgPublicRouteTable:
+    Value: !Ref StgPublicRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-stg-public-rtb"
+
+  StgPrivateRouteTable:
+    Value: !Ref StgPrivateRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-stg-private-rtb"
+
+  StgRDSPrivateRouteTable:
+    Value: !Ref StgRDSPrivateRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-stg-rdsprivate-rtb"
