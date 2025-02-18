@@ -43,8 +43,8 @@ Parameters:
 
   SubnetType:
     Type: String
-    Default: Public
-    AllowedValues: [ Public, Private ]
+    Default: public
+    AllowedValues: [ public, private ]
     Description: "Specify whether to create public or private subnets."
 
   SubnetCount:
@@ -164,7 +164,7 @@ Resources:
       MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet1"
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -181,7 +181,7 @@ Resources:
       MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet2"
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -198,7 +198,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet3"
+          Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -289,12 +289,12 @@ Outputs:
         - !Join [ ",", [ !Ref Subnet1, !Ref Subnet2 ]]
         - !Ref Subnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnets"
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnets"
 
   Subnet1:
     Value: !Ref Subnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet1"
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet1"
 
   Subnet2:
     Value: !Ref Subnet2
@@ -306,7 +306,7 @@ Outputs:
     Value: !Ref Subnet3
     Condition: IsSubnet3AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet3"
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet3"
 
   RouteTable:
     Value: !Ref RouteTable

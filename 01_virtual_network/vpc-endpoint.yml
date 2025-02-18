@@ -164,7 +164,7 @@ Resources:
         - !Ref SSMEndpointSecurityGroup
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "ssm" ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -182,7 +182,7 @@ Resources:
         - !Ref SSMEndpointSecurityGroup
       ServiceName: !Join [".", [ "com.amazonaws", !Ref "AWS::Region", "ssmmessages" ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -200,7 +200,7 @@ Resources:
         - !Ref SSMEndpointSecurityGroup
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "ec2messages" ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -221,7 +221,7 @@ Resources:
         - !Ref CloudWatchEndpointSecurityGroup
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", logs ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -239,7 +239,7 @@ Resources:
         - !Ref CloudWatchEndpointSecurityGroup
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", monitoring ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -257,7 +257,7 @@ Resources:
         - !Ref CloudWatchEndpointSecurityGroup
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", events ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:
@@ -280,7 +280,7 @@ Resources:
       VpcEndpointType: Interface
       ServiceName: !Join [".", ["com.amazonaws", !Ref "AWS::Region", "kms" ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       Tags:
         - Key: Name
@@ -300,7 +300,7 @@ Resources:
         - !Ref ECREndpointSecurityGroup
       ServiceName: !Join [ ".", ["com.amazonaws", !Ref "AWS::Region", "ecr.dkr" ]]
       SubnetIds:
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnets" }}]
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       VpcEndpointType: Interface
       Tags:

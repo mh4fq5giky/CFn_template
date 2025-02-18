@@ -188,7 +188,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Public-Subnet1"
+          Value: !Sub "${PJPrefix}-${Environment}-public-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -202,7 +202,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Public-Subnet2"
+          Value: !Sub "${PJPrefix}-${Environment}-public-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -216,7 +216,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Public-Subnet3"
+          Value: !Sub "${PJPrefix}-${Environment}-public-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -232,7 +232,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Private-Subnet1"
+          Value: !Sub "${PJPrefix}-${Environment}-private-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -246,7 +246,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Private-Subnet2"
+          Value: !Sub "${PJPrefix}-${Environment}-private-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -260,7 +260,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Private-Subnet3"
+          Value: !Sub "${PJPrefix}-${Environment}-private-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -276,7 +276,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet1"
+          Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -290,7 +290,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet2"
+          Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -303,7 +303,7 @@ Resources:
       CidrBlock: !FindInMap [ VPC, !Ref Environment, RDSPrivateSubnet3CIDR ]
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet3"
+          Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -316,7 +316,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Public-rtb"
+          Value: !Sub "${PJPrefix}-${Environment}-public-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -326,7 +326,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-Private-rtb"
+          Value: !Sub "${PJPrefix}-${Environment}-private-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -336,7 +336,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-RDSPrivate-rtb"
+          Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -489,24 +489,24 @@ Outputs:
         - !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
         - !Ref PublicSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Public-Subnets"
+      Name: !Sub "${PJPrefix}-${Environment}-public-subnets"
 
   PublicSubnet1:
     Value: !Ref PublicSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Public-Subnet1"
+      Name: !Sub "${PJPrefix}-${Environment}-public-subnet1"
 
   PublicSubnet2:
     Value: !Ref PublicSubnet2
     Condition: IsPublic2AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Public-Subnet2"
+      Name: !Sub "${PJPrefix}-${Environment}-public-subnet2"
 
   PublicSubnet3:
     Value: !Ref PublicSubnet3
     Condition: IsPublic3AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Public-Subnet3"
+      Name: !Sub "${PJPrefix}-${Environment}-public-subnet3"
 
   PrivateSubnets:
     Value: !If
@@ -517,24 +517,24 @@ Outputs:
         - !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
         - !Ref PrivateSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Private-Subnets"
+      Name: !Sub "${PJPrefix}-${Environment}-private-subnets"
 
   PrivateSubnet1:
     Value: !Ref PrivateSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Private-Subnet1"
+      Name: !Sub "${PJPrefix}-${Environment}-private-subnet1"
 
   PrivateSubnet2:
     Value: !Ref PrivateSubnet2
     Condition: IsPrivate2AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Private-Subnet2"
+      Name: !Sub "${PJPrefix}-${Environment}-private-subnet2"
 
   PrivateSubnet3:
     Value: !Ref PrivateSubnet3
     Condition: IsPrivate3AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Private-Subnet3"
+      Name: !Sub "${PJPrefix}-${Environment}-private-subnet3"
 
   RDSPrivateSubnets:
     Value: !If
@@ -545,31 +545,36 @@ Outputs:
         - !Join [ ",", [ !Ref RDSPrivateSubnet1, !Ref RDSPrivateSubnet2 ]]
         - !Ref RDSPrivateSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnets"
+      Name: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnets"
 
   RDSPrivateSubnet1:
     Value: !Ref RDSPrivateSubnet1
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet1"
+      Name: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet1"
 
   RDSPrivateSubnet2:
     Value: !Ref RDSPrivateSubnet2
     Condition: IsRDSPrivate2AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet2"
+      Name: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet2"
 
   RDSPrivateSubnet3:
     Value: !Ref RDSPrivateSubnet3
     Condition: IsRDSPrivate3AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-RDSPrivate-Subnet3"
+      Name: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet3"
 
   PublicRouteTable:
     Value: !Ref PublicRouteTable
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Public-rtb"
+      Name: !Sub "${PJPrefix}-${Environment}-public-rtb"
 
   PrivateRouteTable:
     Value: !Ref PrivateRouteTable
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-Private-rtb"
+      Name: !Sub "${PJPrefix}-${Environment}-private-rtb"
+
+  RDSPrivateRouteTable:
+    Value: !Ref RDSPrivateRouteTable
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-rdsprivate-rtb"
