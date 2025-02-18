@@ -168,7 +168,7 @@ Resources:
         - IsPublicSubnet
         - !FindInMap [ VPC, !Ref Environment, PublicSubnet1CIDR ]
         - !FindInMap [ VPC, !Ref Environment, PrivateSubnet1CIDR ]
-      MapPublicIpOnLaunch: false
+      MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet1"
@@ -185,7 +185,7 @@ Resources:
         - IsPublicSubnet
         - !FindInMap [ VPC, !Ref Environment, PublicSubnet2CIDR ]
         - !FindInMap [ VPC, !Ref Environment, PrivateSubnet2CIDR ]
-      MapPublicIpOnLaunch: false
+      MapPublicIpOnLaunch: !If [ IsPublicSubnet, true, false ]
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet2"
