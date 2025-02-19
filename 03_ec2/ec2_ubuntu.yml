@@ -56,8 +56,8 @@ Parameters:
 
   SelectSubnet:
     Type: String
-    Default: PublicSubnet1
-    AllowedValues: [ PublicSubnet1, PublicSubnet2, PublicSubnet3, PrivateSubnet1, PrivateSubnet2, PrivateSubnet3 ]
+    Default: public-subnet1
+    AllowedValues: [ public-subnet1, public-subnet2, public-subnet3, private-subnet1, private-subnet2, private-subnet3 ]
 
   AssignElasticIP:
     Type: String
@@ -114,12 +114,12 @@ Mappings:
 # Condition
 # =======================================
 Conditions:
-  IsPublicSubnet1Selected: !Equals [ !Ref SelectSubnet, PublicSubnet1 ]
-  IsPublicSubnet2Selected: !Equals [ !Ref SelectSubnet, PublicSubnet2 ]
-  IsPublicSubnet3Selected: !Equals [ !Ref SelectSubnet, PublicSubnet3 ]
-  IsPrivateSubnet1Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet1 ]
-  IsPrivateSubnet2Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet2 ]
-  IsPrivateSubnet3Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet3 ]
+  IsPublicSubnet1Selected: !Equals [ !Ref SelectSubnet, public-subnet1 ]
+  IsPublicSubnet2Selected: !Equals [ !Ref SelectSubnet, public-subnet2 ]
+  IsPublicSubnet3Selected: !Equals [ !Ref SelectSubnet, public-subnet3 ]
+  IsPrivateSubnet1Selected: !Equals [ !Ref SelectSubnet, private-subnet1 ]
+  IsPrivateSubnet2Selected: !Equals [ !Ref SelectSubnet, private-subnet2 ]
+  IsPrivateSubnet3Selected: !Equals [ !Ref SelectSubnet, private-subnet3 ]
   AssignEIPCondition: !And 
     - !Equals [ !Ref AssignElasticIP, true ]
     - !Or [ !Condition IsPublicSubnet1Selected, !Condition IsPublicSubnet2Selected, !Condition IsPublicSubnet3Selected ]

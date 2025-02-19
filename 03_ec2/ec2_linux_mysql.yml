@@ -46,7 +46,7 @@ Parameters:
   Environment:
     Type: String
     Default: dev
-    AllowedValues: [ "dev", "stg", "prd" ]
+    AllowedValues: [ dev, stg, prd ]
     Description: "Deployment environment (dev, stg, or prd)."
 
   ServerKind:
@@ -56,8 +56,8 @@ Parameters:
 
   SelectSubnet:
     Type: String
-    Default: PublicSubnet1
-    AllowedValues: [ PublicSubnet1, PublicSubnet2, PublicSubnet3, PrivateSubnet1, PrivateSubnet2, PrivateSubnet3 ]
+    Default: public-subnet1
+    AllowedValues: [ public-subnet1, public-subnet2, public-subnet3, private-subnet1, private-subnet2, private-subnet3 ]
 
   AssignElasticIP:
     Type: String
@@ -111,12 +111,12 @@ Mappings:
 # Condition
 # =======================================
 Conditions:
-  IsPublicSubnet1Selected: !Equals [ !Ref SelectSubnet, PublicSubnet1 ]
-  IsPublicSubnet2Selected: !Equals [ !Ref SelectSubnet, PublicSubnet2 ]
-  IsPublicSubnet3Selected: !Equals [ !Ref SelectSubnet, PublicSubnet3 ]
-  IsPrivateSubnet1Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet1 ]
-  IsPrivateSubnet2Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet2 ]
-  IsPrivateSubnet3Selected: !Equals [ !Ref SelectSubnet, PrivateSubnet3 ]
+  IsPublicSubnet1Selected: !Equals [ !Ref SelectSubnet, public-subnet1 ]
+  IsPublicSubnet2Selected: !Equals [ !Ref SelectSubnet, public-subnet2 ]
+  IsPublicSubnet3Selected: !Equals [ !Ref SelectSubnet, public-subnet3 ]
+  IsPrivateSubnet1Selected: !Equals [ !Ref SelectSubnet, private-subnet1 ]
+  IsPrivateSubnet2Selected: !Equals [ !Ref SelectSubnet, private-subnet2 ]
+  IsPrivateSubnet3Selected: !Equals [ !Ref SelectSubnet, private-subnet3 ]
   AssignEIPCondition: !And 
     - !Equals [ !Ref AssignElasticIP, true ]
     - !Or [ !Condition IsPublicSubnet1Selected, !Condition IsPublicSubnet2Selected, !Condition IsPublicSubnet3Selected ]
@@ -262,20 +262,20 @@ Resources:
           - !Ref AWS::NoValue
       SubnetId: !If
         - IsPrivateSubnet1Selected
-        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet1" }}
+        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet1" }}
         - !If
           - IsPrivateSubnet2Selected
-          - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet2" }}
+          - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet2" }}
           - !If
             - IsPrivateSubnet3Selected
-            - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet3" }}
+            - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet3" }}
             - !If
               - IsPublicSubnet1Selected
-              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet1" }}
+              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet1" }}
               - !If
                 - IsPublicSubnet2Selected
-                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet2" }}
-                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet3" }}
+                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet2" }}
+                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet3" }}
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eni"
