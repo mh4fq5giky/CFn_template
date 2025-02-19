@@ -225,7 +225,7 @@ Resources:
     Properties: 
       SecurityGroupIds: 
         - !Ref EICSecurityGroup
-      SubnetId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet1" }}
+      SubnetId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet1" }}
 
   # -------------------------------------
   # Elastic IP
@@ -264,20 +264,20 @@ Resources:
           - !Ref "AWS::NoValue"
       SubnetId: !If
         - IsPrivateSubnet1Selected
-        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet1" }}
+        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet1" }}
         - !If
           - IsPrivateSubnet2Selected
-          - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet2" }}
+          - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet2" }}
           - !If
             - IsPrivateSubnet3Selected
-            - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Private-Subnet3" }}
+            - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-subnet3" }}
             - !If
               - IsPublicSubnet1Selected
-              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet1" }}
+              - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet1" }}
               - !If
                 - IsPublicSubnet2Selected
-                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet2" }}
-                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnet3" }}
+                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet2" }}
+                - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnet3" }}
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eni"
