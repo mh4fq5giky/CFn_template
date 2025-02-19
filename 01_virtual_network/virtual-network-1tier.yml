@@ -307,7 +307,7 @@ Outputs:
     Value: !Ref Subnet2
     Condition: IsSubnet2AZ
     Export:
-      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-Subnet2"
+      Name: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet2"
 
   Subnet3:
     Value: !Ref Subnet3
