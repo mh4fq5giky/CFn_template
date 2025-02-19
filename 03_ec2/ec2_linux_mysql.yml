@@ -182,6 +182,7 @@ Resources:
   SecurityGroupForEC2:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
+      GroupName: !Sub "${PJPrefix}-${Environment}-ec2default-sg"
       GroupDescription: !Sub "${PJPrefix}-${Environment}-ec2default-sg"
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       SecurityGroupIngress:

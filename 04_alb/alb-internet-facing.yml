@@ -74,7 +74,7 @@ Resources:
   TargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties: 
-      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc"}}
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-tg"
       Protocol: HTTP
       Port: 80
@@ -90,6 +90,8 @@ Resources:
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-tg"
+        - Key: PJName
+          Value: !Ref PJPrefix
       TargetGroupAttributes: 
         - Key: deregistration_delay.timeout_seconds
           Value: 300
@@ -124,9 +126,9 @@ Resources:
 #       - Key: access_logs.s3.prefix
 #         Value: !If [IsLoggingEnabled, !Sub "${PJPrefix}-${Environment}-alb-logs", ""]
       SecurityGroups:
-        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-albsg"}}
+        - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-alb-sg" }}
       Subnets: 
-        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-Public-Subnets" }}]
+        !Split [",", { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-subnets" }}]
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb"

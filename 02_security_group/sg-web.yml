@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Create a security group for web access."
+
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "Security Group Configuration"
+        Parameters:
+          - ExistingBastionSecurityGroupId
+          - ExistingWebSecurityGroupId
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  ExistingBastionSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: ""
+    Description: "Specify the Security Group ID for the Bastion host to associate with the EC2 instance. Leave blank to skip."
+
+  ExistingALBSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: ""
+    Description: "Specify the Security Group ID for the Application Load Balancer (ALB) to associate with the EC2 instance. Leave blank to skip."
+
+# =======================================
+# Condition
+# =======================================
+Conditions:
+  IsExistingBastionSGSpecified: !Not [ !Equals [ !Ref ExistingBastionSecurityGroupId, "" ]]
+  IsExistingALBSGSpecified: !Not [ !Equals [ !Ref ExistingALBSecurityGroupId, "" ]]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # Security Group
+  # -------------------------------------
+  SecurityGroupForWeb:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${PJPrefix}-${Environment}-web-sg"
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-web-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "10.0.0.0/32"
+        - !If
+          - IsExistingBastionSGSpecified
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            SourceSecurityGroupId: !Ref ExistingBastionSecurityGroupId
+          - !Ref "AWS::NoValue"
+        - !If
+          - IsExistingALBSGSpecified
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            SourceSecurityGroupId: !Ref ExistingALBSecurityGroupId
+          - !Ref "AWS::NoValue"
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-web-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  SecurityGroupId:
+    Value: !Ref SecurityGroupForWeb
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-web-sg"

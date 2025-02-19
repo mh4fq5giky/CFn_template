@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a security group for ALB access.
+
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # Security Group
+  # -------------------------------------
+  SecurityGroupForALB:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${PJPrefix}-${Environment}-alb-sg"
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-alb-sg"
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-alb-sg"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  SecurityGroupId:
+    Value: !Ref SecurityGroupForALB
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-alb-sg"
