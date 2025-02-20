@@ -50,18 +50,12 @@ Parameters:
     Default: ""
     Description: "ARN of the AWS WAF WebACL to associate with the ALB. Leave empty to disable."
 
-#  ALBAccessLogsBucket:
-#    Type: String
-#    Default: ""
-#    Description: "S3 bucket name for ALB access logs. Leave empty to disable logging."
-
 # =======================================
 # Conditions
 # =======================================
 Conditions:
-  IsWAFEnabled: !Not [!Equals [!Ref WAFWebACLArn, ""]]
   IsSSLCertificateProvided: !Not [!Equals [!Ref SSLCertificateArn, ""]]
-# IsLoggingEnabled: !Not [!Equals [!Ref ALBAccessLogsBucket, ""]]
+  IsWAFEnabled: !Not [!Equals [!Ref WAFWebACLArn, ""]]
 
 # =======================================
 # Resources
@@ -110,21 +104,15 @@ Resources:
   # -------------------------------------
   InternetALB:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
-#   DependsOn: LogBucketPolicy
-    Properties: 
+    Properties:
       Name: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb"
+      Type: application
       Scheme: internet-facing
       LoadBalancerAttributes: 
         - Key: deletion_protection.enabled
           Value: true
         - Key: idle_timeout.timeout_seconds
           Value: 60
-#       - Key: access_logs.s3.enabled
-#         Value: !If [IsLoggingEnabled, true, false]
-#       - Key: access_logs.s3.bucket
-#         Value: !If [IsLoggingEnabled, !Ref ALBAccessLogsBucket, ""]
-#       - Key: access_logs.s3.prefix
-#         Value: !If [IsLoggingEnabled, !Sub "${PJPrefix}-${Environment}-alb-logs", ""]
       SecurityGroups:
         - { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-alb-sg" }}
       Subnets: 
@@ -170,41 +158,6 @@ Resources:
     Properties:
       ResourceArn: !Ref InternetALB
       WebACLArn: !Ref WAFWebACLArn
-
-  # -------------------------------------
-  # S3
-  # -------------------------------------
-#  LogBucket:
-#    Type: "AWS::S3::Bucket"
-#    Properties:
-#      BucketName: !Join [ "-", [ !Ref PJPrefix, !Ref Environment, alb-logs ] ]
-#      BucketEncryption:
-#        ServerSideEncryptionConfiguration:
-#        - ServerSideEncryptionByDefault:
-#            SSEAlgorithm: AES256
-#      PublicAccessBlockConfiguration:
-#        BlockPublicAcls: true
-#        BlockPublicPolicy: true
-#        IgnorePublicAcls: true
-#        RestrictPublicBuckets: true
-#      LifecycleConfiguration:
-#        Rules:
-#          - ExpirationInDays: 30
-#            Status: Enabled
-
-#  LogBucketPolicy:
-#    Type: "AWS::S3::BucketPolicy"
-#    Properties:
-#      Bucket: !Ref LogBucket
-#      PolicyDocument:
-#        Statement:
-#          - Action:
-#            - s3:PutObject
-#            Effect: Allow
-#            Resource:
-#            - !Sub arn:aws:s3:::${LogBucket}/*
-#            Principal:
-#              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
 
 # =======================================
 # Outputs
