@@ -38,12 +38,14 @@ Parameters:
     Description: "Deployment environment (dev, stg, or prd)."
 
   ExistingBastionSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
+#   Type: AWS::EC2::SecurityGroup::Id
+    Type: String
     Default: ""
     Description: "Specify the Security Group ID for the Bastion host to associate with the EC2 instance. Leave blank to skip."
 
   ExistingALBSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
+#   Type: AWS::EC2::SecurityGroup::Id
+    Type: String
     Default: ""
     Description: "Specify the Security Group ID for the Application Load Balancer (ALB) to associate with the EC2 instance. Leave blank to skip."
 
