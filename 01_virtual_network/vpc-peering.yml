@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Create a VPC Peering Connection and configure necessary routes between VPCs.
+Description: Creates a VPC Peering Connection and configures necessary routes between VPCs.
 
 # =======================================
 # Metadata
@@ -43,27 +43,27 @@ Parameters:
   PeerVPCId:
     Type: String
     Default: ""
-    Description: The ID of the external VPC (Accepter VPC)
+    Description: "ID of the peer VPC. Leave empty if not required."
 
   PeerAccountId:
     Type: String
     Default: ""
-    Description: "The AWS Account ID of the peer VPC."
+    Description: "AWS account ID of the peer VPC owner. Leave empty if in the same account."
 
   PeerRegion:
     Type: String
     Default: ""
-    Description: "The AWS region of the remote VPC (leave empty if same region)."
+    Description: "AWS region of the peer VPC. Leave empty if in the same region."
 
   PeerVPCCidrBlock:
     Type: String
-    Description: The CIDR block of the external VPC (Accepter VPC)
+    Description: "CIDR block of the peer VPC."
 
   EnablePublicPeering:
     Type: String
     Default: false
     AllowedValues: [ true, false ]
-    Description: "Specify whether to create a public subnet route for VPC Peering."
+    Description: "Enable public subnet routing for the VPC peering connection."
 
 # =======================================
 # Conditions
@@ -87,17 +87,7 @@ Resources:
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       PeerVpcId: !Ref PeerVPCId
       PeerRegion: !If [ IsPeerRegion, !Ref PeerRegion, !Ref "AWS::NoValue" ]
-#      PeerRegion:
-#        - !If
-#          - IsPeerRegion
-#          - !Ref PeerRegion
-#          - !Ref "AWS::NoValue"
       PeerOwnerId: !If [ IsAccountId, !Ref PeerAccountId, !Ref "AWS::NoValue" ]
-#      PeerOwnerId:
-#        - !If
-#          - IsAccountId
-#          - !Ref PeerAccountId
-#          - !Ref "AWS::NoValue"
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-${Environment}-vpc-peering"
