@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a VPC Peering Connection and configure necessary routes between VPCs.
+
+# =======================================
+# Metadata
+# =======================================
+Metadata: 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "Peer VPC Configuration"
+        Parameters:
+          - PeerRegion
+          - PeerAccountId
+          - PeerVPCId
+          - PeerVPCCidrBlock
+          - EnablePublicPeering
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  PeerVPCId:
+    Type: String
+    Default: ""
+    Description: The ID of the external VPC (Accepter VPC)
+
+  PeerAccountId:
+    Type: String
+    Default: ""
+    Description: "The AWS Account ID of the peer VPC."
+
+  PeerRegion:
+    Type: String
+    Default: ""
+    Description: "The AWS region of the remote VPC (leave empty if same region)."
+
+  PeerVPCCidrBlock:
+    Type: String
+    Description: The CIDR block of the external VPC (Accepter VPC)
+
+  EnablePublicPeering:
+    Type: String
+    Default: false
+    AllowedValues: [ true, false ]
+    Description: "Specify whether to create a public subnet route for VPC Peering."
+
+# =======================================
+# Conditions
+# =======================================
+Conditions:
+  CreatePublicRoute: !Equals [ !Ref EnablePublicPeering, true ]
+  IsAccountId: !Not [ !Equals [ !Ref PeerAccountId, "" ] ]
+  IsPeerRegion: !Not [ !Equals [ !Ref PeerRegion, "" ] ]
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # VPC Peering Connection:
+  # -------------------------------------
+  VPCPeeringConnection:
+    Type: "AWS::EC2::VPCPeeringConnection"
+    Properties:
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      PeerVpcId: !Ref PeerVPCId
+      PeerRegion: !If [ IsPeerRegion, !Ref PeerRegion, !Ref "AWS::NoValue" ]
+#      PeerRegion:
+#        - !If
+#          - IsPeerRegion
+#          - !Ref PeerRegion
+#          - !Ref "AWS::NoValue"
+      PeerOwnerId: !If [ IsAccountId, !Ref PeerAccountId, !Ref "AWS::NoValue" ]
+#      PeerOwnerId:
+#        - !If
+#          - IsAccountId
+#          - !Ref PeerAccountId
+#          - !Ref "AWS::NoValue"
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-vpc-peering"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # PrivateRoute To Peer VPC
+  # -------------------------------------
+  PrivateRouteToPeerVPC:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-rtb" }}
+      DestinationCidrBlock: !Ref PeerVPCCidrBlock
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+  # -------------------------------------
+  # PublicRoute To Peer VPC
+  # -------------------------------------
+  PublicRouteToPeerVPC:
+    Type: "AWS::EC2::Route"
+    Condition: CreatePublicRoute
+    Properties:
+      RouteTableId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-public-rtb" }}
+      DestinationCidrBlock: !Ref PeerVPCCidrBlock
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  VPCPeeringConnectionId:
+    Value: !Ref VPCPeeringConnection
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-vpc-peering-id"
