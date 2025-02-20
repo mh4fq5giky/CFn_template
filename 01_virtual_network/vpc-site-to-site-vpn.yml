@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a Site-to-Site VPN connection, including Customer Gateway, VPN Gateway, and route configurations.
+
+# =======================================
+# Metadata
+# =======================================
+Metadata: 
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "Customer Gateway and On-Premises Network Configuration"
+        Parameters:
+          - CustomerGatewayIp
+          - DestinationCidrBlock
+
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  CustomerGatewayIp:
+    Type: String
+    Default: X.X.X.X
+    AllowedPattern: ^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
+    Description: "IP address of the Customer Gateway."
+
+  DestinationCidrBlock:
+    Type: String
+    Default: X.X.X.X/xx
+    AllowedPattern: ^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/([0-9]{1,2})$
+    Description: "Destination CIDR block for the VPN connection."
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+
+  # -------------------------------------
+  # Customer Gateway
+  # -------------------------------------
+  CustomerGateway:
+    Type: "AWS::EC2::CustomerGateway"
+    Properties:
+      Type: ipsec.1
+      BgpAsn: 65000
+      IpAddress: !Ref CustomerGatewayIp
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-cgw"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  # -------------------------------------
+  # VPN Gateway
+  # -------------------------------------
+  VPNGateway:
+    Type: "AWS::EC2::VPNGateway"
+    Properties:
+      Type: ipsec.1
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-vgw"
+        - Key: PJName
+          Value: !Ref PJPrefix
+  AttachVPNGateway:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
+      VpnGatewayId: !Ref VPNGateway
+
+  VPNConnection:
+    Type: "AWS::EC2::VPNConnection"
+    Properties:
+      Type: ipsec.1
+      StaticRoutesOnly: False
+      CustomerGatewayId: !Ref CustomerGateway
+      VpnGatewayId: !Ref VPNGateway
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-${Environment}-vpn-conn"
+        - Key: PJName
+          Value: !Ref PJPrefix
+
+  VPNRoute:
+    Type: "AWS::EC2::VPNConnectionRoute"
+    Properties:
+      DestinationCidrBlock: !Ref DestinationCIdrBlock
+      VpnConnectionId: !Ref VPNConnection
+
+  VPNRoutePropagation:
+    Type: "AWS::EC2::VPNGatewayRoutePropagation"
+    Properties:
+      RouteTableIds: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-private-rtb" }}
+      VpnGatewayId: !Ref VPNGateway
+    DependsOn: AttachVPNGateway
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  CustomerGateway:
+    Value: !Ref CustomerGateway
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-cgw"
+
+  VPNGateway:
+    Value: !Ref VirtualPrivateGateway
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-vgw"
+
+  VPNConnection:
+    Value: !Ref VPNConnection
+    Export:
+      Name: !Sub "${PJPrefix}-${Environment}-vpn-conn"
