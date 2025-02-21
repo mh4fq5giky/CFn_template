@@ -22,9 +22,9 @@ Metadata:
           default: "EC2 Configuration"
         Parameters:
           - AMIId
-          - InstanceType
           - ExistingSecurityGroupId
           - UserId
+          - KeyPair
       - Label:
           default: "EBS Configuration"
         Parameters:
@@ -72,7 +72,7 @@ Parameters:
     Description: "Specify whether to assign an Elastic IP (true/false)"
 
   ExistingSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
+    Type: String
     Default: ""
     Description: "Specify an existing Security Group ID to associate with the EC2 instance. Leave blank to skip."
 
@@ -84,7 +84,12 @@ Parameters:
   UserId:
     Type: String
     Default: sysadmin
-    Description: 'The user ID to be created on the EC2 instance. This will replace the default "ec2-user" account.'
+    Description: "The user ID to be created on the EC2 instance. This will replace the default 'ec2-user' account."
+
+  KeyPair:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Default: ""
+    Description: "The EC2 Key Pair to allow SSH access to the instance"
 
   UseSSM:
     Type: String
@@ -381,7 +386,7 @@ Resources:
 
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ec2"
+          Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}"
         - Key: PJName
           Value: !Ref PJPrefix
 

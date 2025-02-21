@@ -24,6 +24,7 @@ Metadata:
           - AMIId
           - ExistingSecurityGroupId
           - UserId
+          - KeyPair
       - Label:
           default: "Connection Method Configuration"
         Parameters:
@@ -66,7 +67,7 @@ Parameters:
     Description: "Specify whether to assign an Elastic IP (true/false)"
 
   ExistingSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
+    Type: String
     Default: ""
     Description: "Specify an existing Security Group ID to associate with the EC2 instance. Leave blank to skip."
 
@@ -78,7 +79,12 @@ Parameters:
   UserId:
     Type: String
     Default: sysadmin
-    Description: 'The user ID to be created on the EC2 instance. This will replace the default "ec2-user" account.'
+    Description: "The user ID to be created on the EC2 instance. This will replace the default 'ec2-user' account."
+
+  KeyPair:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Default: ""
+    Description: "The EC2 Key Pair to allow SSH access to the instance"
 
   UseSSM:
     Type: String
@@ -131,19 +137,6 @@ Conditions:
 # Resources
 # =======================================
 Resources:
-
-  # -------------------------------------
-  # Key Pair
-  # -------------------------------------
-  KeyPair:
-    Type: "AWS::EC2::KeyPair"
-    Properties:
-      KeyName: !Sub "${PJPrefix}-${Environment}-${ServerKind}-key"
-      Tags:
-        - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-key"
-        - Key: PJName
-          Value: !Ref PJPrefix
 
   # -------------------------------------
   # IAM Role for EC2
@@ -356,7 +349,7 @@ Resources:
 
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ec2"
+          Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -374,8 +367,3 @@ Outputs:
     Condition: AssignEIPCondition
     Export:
       Name: !Sub "${PJPrefix}-${Environment}-${ServerKind}-EC2PublicIP"
-
-  KeyPairName:
-    Value: !Ref KeyPair
-    Export:
-      Name: !Sub "${PJPrefix}-${Environment}-${ServerKind}-KeyPairName"
