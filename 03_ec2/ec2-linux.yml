@@ -293,7 +293,12 @@ Resources:
             VolumeType: !FindInMap [ EC2, !Ref "Environment", "EBSVolumeType" ]
             VolumeSize: !FindInMap [ EC2, !Ref "Environment", "EBSRootVolumeSize" ]
             DeleteOnTermination: true
-      IamInstanceProfile: !Ref InstanceProfileForEC2
+            Tags:
+              - Key: Name
+                Value: "${PJPrefix}-${Environment}-${ServerKind}-ebs"
+              - Key: PJName
+                Value: !Ref PJPrefix
+            IamInstanceProfile: !Ref InstanceProfileForEC2
       InstanceInitiatedShutdownBehavior: stop
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref ENIForEC2
