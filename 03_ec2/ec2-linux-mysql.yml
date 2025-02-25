@@ -66,9 +66,9 @@ Parameters:
     Description: "Specify whether to assign an Elastic IP (true/false)"
 
   ExistingSecurityGroupId:
-    Type: String
+    Type: AWS::EC2::SecurityGroup::Id
     Default: ""
-    Description: "Specify an existing Security Group ID to associate with the EC2 instance. Leave blank to skip."
+    Description: "Specify an existing Security Group ID to associate with the EC2 instance."
 
   AMIId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
@@ -275,6 +275,21 @@ Resources:
           Value: !Ref PJPrefix
 
   # -------------------------------------
+  # Launch Template
+  # -------------------------------------
+  LaunchTemplate:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties: 
+      LaunchTemplateData:
+        TagSpecifications:
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ebs"
+              - Key: PJName
+                Value: !Ref PJPrefix
+
+  # -------------------------------------
   # EC2
   # -------------------------------------
   EC2Instance: 
@@ -288,17 +303,15 @@ Resources:
             VolumeType: !FindInMap [ EC2, !Ref "Environment", "EBSVolumeType" ]
             VolumeSize: !FindInMap [ EC2, !Ref "Environment", "EBSRootVolumeSize" ]
             DeleteOnTermination: true
-            Tags:
-              - Key: Name
-                Value: "${PJPrefix}-${Environment}-${ServerKind}-ebs"
-              - Key: PJName
-                Value: !Ref PJPrefix
       IamInstanceProfile: !Ref InstanceProfileForEC2
       InstanceInitiatedShutdownBehavior: stop
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref ENIForEC2
           DeviceIndex: 0
       KeyName: !Ref KeyPair
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
       UserData:
         Fn::Base64:
           Fn::Sub:
