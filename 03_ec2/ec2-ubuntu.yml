@@ -172,19 +172,16 @@ Resources:
       Roles: !Ref IAMRoleForEC2
 
   # -------------------------------------
-  # Security Group
+  # EC2 Connect Security Group
   # -------------------------------------
-  SecurityGroupForEC2:
+  EC2ConnectSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
+    Condition: IsUseEIC
     Properties:
-      GroupName: !Sub "${PJPrefix}-${Environment}-ec2default-sg"
-      GroupDescription: !Sub "${PJPrefix}-${Environment}-ec2default-sg"
+      GroupName: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
+      GroupDescription: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref "AWS::NoValue"
         - !If
           - IsUseEIC
           - IpProtocol: tcp
@@ -194,7 +191,7 @@ Resources:
           - !Ref "AWS::NoValue"
       Tags:
         - Key: Name
-          Value: !Sub "${PJPrefix}-${Environment}-ec2default-sg"
+          Value: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
         - Key: PJName
           Value: !Ref PJPrefix
 
@@ -205,6 +202,7 @@ Resources:
     Type: "AWS::EC2::SecurityGroup"
     Condition: IsUseEIC
     Properties:
+      GroupName: !Sub "${PJPrefix}-${Environment}-eic-sg"
       GroupDescription: !Sub "${PJPrefix}-${Environment}-eic-sg"
       VpcId: { "Fn::ImportValue": { "Fn::Sub": "${PJPrefix}-${Environment}-vpc" }}
       Tags:
@@ -251,7 +249,10 @@ Resources:
       Description: !Sub "${PJPrefix}-${Environment}-${ServerKind}"
       SourceDestCheck: false
       GroupSet:
-        - !Ref SecurityGroupForEC2
+        - !If
+          - IsUseEIC
+          - !Ref EC2ConnectSecurityGroup
+          - !Ref "AWS::NoValue"
         - !If
           - IsExistingSGSpecified
           - !Ref ExistingSecurityGroupId
