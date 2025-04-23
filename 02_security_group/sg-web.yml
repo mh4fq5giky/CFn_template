@@ -94,6 +94,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-web-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

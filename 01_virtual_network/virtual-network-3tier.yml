@@ -162,6 +162,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-vpc"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Internet Gateway
@@ -175,6 +177,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-igw"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   VPCGatewayAttachment:
     Type: "AWS::EC2::VPCGatewayAttachment"
@@ -198,6 +202,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-public-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   PublicSubnet2:
     Type: "AWS::EC2::Subnet"
@@ -212,6 +218,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-public-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   PublicSubnet3:
     Type: "AWS::EC2::Subnet"
@@ -226,6 +234,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-public-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Private Subnet
@@ -242,6 +252,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-private-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   PrivateSubnet2:
     Type: "AWS::EC2::Subnet"
@@ -256,6 +268,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-private-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   PrivateSubnet3:
     Type: "AWS::EC2::Subnet"
@@ -270,6 +284,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-private-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # RDS Private Subnet
@@ -286,6 +302,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   RDSPrivateSubnet2:
     Type: "AWS::EC2::Subnet"
@@ -300,6 +318,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   RDSPrivateSubnet3:
     Type: "AWS::EC2::Subnet"
@@ -313,6 +333,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Route Table
@@ -326,6 +348,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-public-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   PrivateRouteTable:
     Type: "AWS::EC2::RouteTable"
@@ -336,6 +360,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-private-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   RDSPrivateRouteTable:
     Type: "AWS::EC2::RouteTable"
@@ -346,6 +372,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-rdsprivate-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # ---------------------------------------
   # Routing
@@ -442,6 +470,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ngw-eip"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   NatGateway:
     Type: "AWS::EC2::NatGateway"
@@ -455,6 +485,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ngw"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # S3 VPC Endpoint
@@ -472,6 +504,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-S3Endpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

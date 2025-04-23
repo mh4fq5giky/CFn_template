@@ -195,6 +195,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # EIC SecurityGroup
@@ -211,6 +213,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-eic-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EICEndpoint:
     Type: "AWS::EC2::InstanceConnectEndpoint"
@@ -233,6 +237,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eip"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EIPAssociationForEC2:
     Type: "AWS::EC2::EIPAssociation"
@@ -279,6 +285,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eni"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Launch Template
@@ -294,6 +302,8 @@ Resources:
                 Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ebs"
               - Key: PJName
                 Value: !Ref PJPrefix
+              - Key: Environment
+                Value: !Ref Environment
 
   # -------------------------------------
   # EC2
@@ -352,7 +362,6 @@ Resources:
 
               # Set the system locale to Japanese (UTF-8)
               localectl set-locale LANG=ja_JP.UTF-8
-              source /etc/locale.conf
 
               # Install and enable the rsyslog service for system logging
               dnf -y install rsyslog
@@ -361,7 +370,6 @@ Resources:
 
               # Install and enable the cloudwatch service for scheduled tasks
               dnf -y install amazon-cloudwatch-agent
-              dnf -y install collectd
             - {
               UserId: !Ref UserId
             }
@@ -371,6 +379,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

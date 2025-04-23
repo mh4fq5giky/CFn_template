@@ -119,6 +119,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-flowlogs-role"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   LogsforFlowlogs:
     Type: "AWS::Logs::LogGroup"
@@ -131,6 +133,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-logging"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # VPC FlowLogs CloudWatch
   VPCFlowLogsCloudWatch:
@@ -148,6 +152,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-flowlogs"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
       TrafficType: !Ref FilterType
     DependsOn: [ IAMRoleforFlowlogs, LogsforFlowlogs ]
 
@@ -186,6 +192,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-s3bucket-flowlogs-${AWS::AccountId}"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # VPC FlowLogs S3
   VPCFlowLogsS3:
@@ -207,6 +215,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-flowlogs"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
       TrafficType: !Ref FilterType
     DependsOn: S3BucketforFlowlogs
 

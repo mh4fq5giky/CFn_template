@@ -190,6 +190,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # EIC SecurityGroup
@@ -206,6 +208,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-eic-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EICEndpoint:
     Type: "AWS::EC2::InstanceConnectEndpoint"
@@ -228,6 +232,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eip"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EIPAssociationForEC2:
     Type: "AWS::EC2::EIPAssociation"
@@ -274,6 +280,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eni"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Launch Template
@@ -289,6 +297,8 @@ Resources:
                 Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ebs"
               - Key: PJName
                 Value: !Ref PJPrefix
+              - Key: Environment
+                Value: !Ref Environment
 
   # -------------------------------------
   # EC2
@@ -322,19 +332,16 @@ Resources:
               #!/bin/bash
               # Create a new user account
               useradd ${UserId}
-              cat /etc/passwd | grep ${UserId}
               echo "${UserId} ALL=(ALL) NOPASSWD:ALL" | tee --append /etc/sudoers.d/90-cloud-init-users
 
               # Grant administrative privileges to the user account
               usermod -aG wheel ${UserId}
-              cat /etc/group | grep wheel
 
               # Copy the public key from ec2-user and adjust permissions (reuse the key)
               cp -R /home/ec2-user/.ssh /home/${UserId}
               chown -R ${UserId}:${UserId} /home/${UserId}/.ssh
               chmod 700 /home/${UserId}/.ssh
               chmod 600 /home/${UserId}/.ssh/*
-              ls -la /home/${UserId}/.ssh
 
               # Disable/Delete the ec2-user account
               echo "DenyUsers ec2-user" | tee --append /etc/ssh/sshd_config
@@ -348,7 +355,6 @@ Resources:
 
               # Set the system locale to Japanese (UTF-8)
               localectl set-locale LANG=ja_JP.UTF-8
-              source /etc/locale.conf
 
               # Install and enable the rsyslog service for system logging
               dnf -y install rsyslog
@@ -373,6 +379,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

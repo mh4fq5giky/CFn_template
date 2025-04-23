@@ -86,6 +86,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-tg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
       TargetGroupAttributes: 
         - Key: deregistration_delay.timeout_seconds
           Value: 300
@@ -122,6 +124,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${InternetALBName}-alb"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Listener

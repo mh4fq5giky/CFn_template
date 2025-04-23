@@ -135,6 +135,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-vpc"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Internet Gateway
@@ -148,6 +150,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-igw"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   VPCGatewayAttachment:
     Type: "AWS::EC2::VPCGatewayAttachment"
@@ -174,6 +178,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet1"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   Subnet2:
     Type: "AWS::EC2::Subnet"
@@ -191,6 +197,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet2"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   Subnet3:
     Type: "AWS::EC2::Subnet"
@@ -208,6 +216,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-subnet3"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Route Table
@@ -221,6 +231,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${SubnetType}-rtb"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # ---------------------------------------
   # Routing
@@ -272,6 +284,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-S3Endpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

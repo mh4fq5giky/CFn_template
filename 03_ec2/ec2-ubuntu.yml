@@ -194,6 +194,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ec2-connect-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # EIC SecurityGroup
@@ -210,6 +212,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-eic-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EICEndpoint:
     Type: "AWS::EC2::InstanceConnectEndpoint"
@@ -232,6 +236,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eip"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EIPAssociationForEC2:
     Type: "AWS::EC2::EIPAssociation"
@@ -278,6 +284,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-eni"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # Launch Template
@@ -293,6 +301,8 @@ Resources:
                 Value: !Sub "${PJPrefix}-${Environment}-${ServerKind}-ebs"
               - Key: PJName
                 Value: !Ref PJPrefix
+              - Key: Environment
+                Value: !Ref Environment
 
   # -------------------------------------
   # EC2
@@ -328,21 +338,18 @@ Resources:
 
               # Create a new user account
               useradd ${UserId}
-              cat /etc/passwd | grep ${UserId}
 
               # Grant administrative privileges to the user account (sudo group in Ubuntu)
               echo "${UserId} ALL=(ALL) NOPASSWD:ALL" | tee --append /etc/sudoers.d/90-cloud-init-users
 
               # Grant sudo privileges (sudo group for Ubuntu)
               usermod -aG sudo ${UserId}
-              cat /etc/group | grep sudo
 
               # Copy the public key from ubuntu user and adjust permissions (reuse the key)
               cp -R /home/ubuntu/.ssh /home/${UserId}
               chown -R ${UserId}:${UserId} /home/${UserId}/.ssh
               chmod -R 600 /home/${UserId}/.ssh
               chmod 700 /home/${UserId}/.ssh
-              ls -la /home/${UserId}/.ssh
 
               # Disable/Delete the ubuntu user account (if needed)
               echo "DenyUsers ubuntu" | tee --append /etc/ssh/sshd_config
@@ -366,6 +373,8 @@ Resources:
           Value: !Sub ${PJPrefix}-${Environment}-${ServerKind}
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs

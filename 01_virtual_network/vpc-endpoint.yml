@@ -100,6 +100,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   CloudWatchEndpointSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -117,6 +119,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   KMSEndpointSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -134,6 +138,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-KMSEndpoint-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   ECREndpointSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -151,6 +157,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ECREndpoint-sg"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # SSM EndPoint
@@ -172,6 +180,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   SSMMessagesEndpoint:
     Type: "AWS::EC2::VPCEndpoint"
@@ -190,6 +200,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EC2MessagesEndpoint:
     Type: "AWS::EC2::VPCEndpoint"
@@ -208,6 +220,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-SSMEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # CloudWatch EndPoint
@@ -229,6 +243,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   MonitoringEndpoint:
     Type: "AWS::EC2::VPCEndpoint"
@@ -247,6 +263,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   EventsEndpoint:
     Type: "AWS::EC2::VPCEndpoint"
@@ -265,6 +283,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-CloudWatchEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # KMS EndPoint
@@ -287,6 +307,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-KMSEndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
   # -------------------------------------
   # ECR EndPoint
@@ -308,6 +330,8 @@ Resources:
           Value: !Sub "${PJPrefix}-${Environment}-ECREndpoint"
         - Key: PJName
           Value: !Ref PJPrefix
+        - Key: Environment
+          Value: !Ref Environment
 
 # =======================================
 # Outputs
