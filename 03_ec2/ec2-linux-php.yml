@@ -339,24 +339,6 @@ Resources:
             - |
               #!/bin/bash
 
-              #!/bin/bash
-              # Create a new user account
-              useradd ${UserId}
-              echo "${UserId} ALL=(ALL) NOPASSWD:ALL" | tee --append /etc/sudoers.d/90-cloud-init-users
-
-              # Grant administrative privileges to the user account
-              usermod -aG wheel ${UserId}
-
-              # Copy the public key from ec2-user and adjust permissions (reuse the key)
-              cp -R /home/ec2-user/.ssh /home/${UserId}
-              chown -R ${UserId}:${UserId} /home/${UserId}/.ssh
-              chmod 700 /home/${UserId}/.ssh
-              chmod 600 /home/${UserId}/.ssh/*
-
-              # Disable/Delete the ec2-user account
-              echo "DenyUsers ec2-user" | tee --append /etc/ssh/sshd_config
-              systemctl restart sshd
-
               # Update all installed packages to the latest versions
               dnf -y update
 
@@ -365,35 +347,48 @@ Resources:
 
               # Set the system locale to Japanese (UTF-8)
               localectl set-locale LANG=ja_JP.UTF-8
-              source /etc/locale.conf
+
+              # Set Hostname
+              # hostnamectl set-hostname xxxx01
 
               # Install and enable the rsyslog service for system logging
               dnf -y install rsyslog
-              systemctl enable rsyslog
-              systemctl start rsyslog
+              systemctl enable -now rsyslog
 
               # Install and enable the cloudwatch service for scheduled tasks
               dnf -y install amazon-cloudwatch-agent
-              dnf -y install collectd
 
-              # Install and enable nginx
-              sudo dnf -y install nginx
-              sudo systemctl start nginx.service
-              sudo systemctl enable nginx.service
-              sudo chmod 777 -R /var/log/nginx
+              # Create a new user account
+              useradd ${UserId}
+              echo "${UserId} ALL=(ALL) NOPASSWD:ALL" | tee --append /etc/sudoers.d/90-cloud-init-users
+
+              # Grant administrative privileges to the user account
+              usermod -aG wheel ${UserId}
+
+              # Copy the public key from ec2-user and adjust permissions (reuse the key)
+              cp -r /home/ec2-user/.ssh /home/${UserId}
+              chown -R ${UserId}:${UserId} /home/${UserId}/.ssh
+              chmod 700 /home/${UserId}/.ssh
+              chmod 600 /home/${UserId}/.ssh/*
+
+              # Disable/Delete the ec2-user account
+              echo "DenyUsers ec2-user" | tee --append /etc/ssh/sshd_config
+              systemctl restart sshd
 
               # Install and enable nginx
               dnf -y install nginx
-              systemctl status nginx.service
-              systemctl enable nginx.service
-              systemctl is-enabled nginx.service
+              systemctl enable -now nginx
+              sudo systemctl enable nginx.service
+              sudo chmod 777 -R /var/log/nginx
 
-              dnf -y install mysql-client
+              # Install and enable the MySQL
+              dnf localinstall -y http://dev.mysql.com/get/mysql84-community-release-el9-1.noarch.rpm
+              dnf -y install mysql mysql-community-client
+              systemctl start mysqld
 
-              dnf -y install php-fpm php-mysqli php-json php php-devel
-              dnf -y install php-gd php-intl
-              systemctl start php-fpm.service
-              systemctl is-enabled php-fpm.service
+              dnf -y install php-fpm php-mysqli php-json php php-devel php-gd php-intl
+              systemctl enable -now php-fpm.service
+
             - {
               UserId: !Ref UserId
             }

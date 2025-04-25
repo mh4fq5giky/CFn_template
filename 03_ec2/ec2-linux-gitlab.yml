@@ -334,6 +334,25 @@ Resources:
             - |
               #!/bin/bash
 
+              # Update all installed packages to the latest versions
+              dnf -y update
+
+              # Set the system timezone to Asia/Tokyo
+              timedatectl set-timezone Asia/Tokyo
+
+              # Set the system locale to Japanese (UTF-8)
+              localectl set-locale LANG=ja_JP.UTF-8
+
+              # Set Hostname
+              # hostnamectl set-hostname xxxx01
+
+              # Install and enable the rsyslog service for system logging
+              dnf -y install rsyslog
+              systemctl enable -now rsyslog
+
+              # Install and enable the cloudwatch service for scheduled tasks
+              dnf -y install amazon-cloudwatch-agent
+
               # Create a new user account
               useradd ${UserId}
               echo "${UserId} ALL=(ALL) NOPASSWD:ALL" | tee --append /etc/sudoers.d/90-cloud-init-users
@@ -342,7 +361,7 @@ Resources:
               usermod -aG wheel ${UserId}
 
               # Copy the public key from ec2-user and adjust permissions (reuse the key)
-              cp -R /home/ec2-user/.ssh /home/${UserId}
+              cp -r /home/ec2-user/.ssh /home/${UserId}
               chown -R ${UserId}:${UserId} /home/${UserId}/.ssh
               chmod 700 /home/${UserId}/.ssh
               chmod 600 /home/${UserId}/.ssh/*
@@ -361,24 +380,6 @@ Resources:
               sysctl vm.swappiness=10
               sed -i 's/^vm.swappiness=.*/vm.swappiness=10/' /etc/sysctl.conf
               sysctl -p
-
-              # Update all installed packages to the latest versions
-              dnf -y update
-
-              # Set the system timezone to Asia/Tokyo
-              timedatectl set-timezone Asia/Tokyo
-
-              # Set the system locale to Japanese (UTF-8)
-              localectl set-locale LANG=ja_JP.UTF-8
-
-              # Install and enable the rsyslog service for system logging
-              dnf -y install rsyslog
-              systemctl enable rsyslog
-              systemctl start rsyslog
-
-              # Install and enable the cloudwatch service for scheduled tasks
-              dnf -y install amazon-cloudwatch-agent
-              dnf -y install collectd
 
               # Install GitLab
               #dnf install -y policycoreutils-python-utils openssh-server openssh-clients perl
