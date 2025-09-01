@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Fargate Minimal Setup (Cluster + Service + TaskDefinition)
+# =======================================
+# Metadata
+# =======================================
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Common Configuration"
+        Parameters:
+          - PJPrefix
+          - Environment
+      - Label:
+          default: "ECS Configuration"
+        Parameters:
+          - ClusterName
+          - ServiceName
+          - ContainerImage
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VpcId
+          - SubnetIds
+          - SecurityGroupIds
+
+# =======================================
+# Parameters
+# =======================================
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: testprefix
+    MinLength: 1
+    MaxLength: 12
+    AllowedPattern: "[a-z0-9]+"
+    Description: "Project prefix, consisting of lowercase letters and numbers."
+    ConstraintDescription: "Must contain only lowercase letters and numbers."
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [ dev, stg, prd ]
+    Description: "Deployment environment (dev, stg, or prd)."
+
+  ClusterName:
+    Type: String
+    Default: fargate-cluster
+    Description: ECS Cluster name
+
+  ServiceName:
+    Type: String
+    Default: fargate-service
+    Description: ECS Service name
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Existing VPC ID
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for ECS tasks (must be in the given VPC)
+
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security Groups for ECS tasks
+
+  ContainerImage:
+    Type: String
+    Description: ECR Image URI (e.g., 123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/my-app:latest)
+
+# =======================================
+# Resources
+# =======================================
+Resources:
+  # -------------------------------------
+  # ECS Cluster
+  # -------------------------------------
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Sub "${PJPrefix}-${Environment}-${ClusterName}"
+
+  # -------------------------------------
+  # IAM Role for ECS Task Execution
+  # -------------------------------------
+  ECSExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${PJPrefix}-${Environment}-${ClusterName}-ecs-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # -------------------------------------
+  # Task Definition (minimal example: nginx)
+  # -------------------------------------
+  ECSTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: my-fargate-task
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      ContainerDefinitions:
+        - Name: nginx
+          Image: !Ref ContainerImage
+          PortMappings:
+            - ContainerPort: 80
+
+  # -------------------------------------
+  # ECS Service
+  # -------------------------------------
+  ECSService:
+    Type: "AWS::ECS::Service"
+    DependsOn: ECSCluster
+    Properties:
+      ServiceName: !Sub "${PJPrefix}-${Environment}-${ServiceName}"
+      Cluster: !Ref ECSCluster
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups: !Ref SecurityGroupIds
+      TaskDefinition: !Ref ECSTaskDefinition
+
+# =======================================
+# Outputs
+# =======================================
+Outputs:
+  ClusterName:
+    Value: !Ref ECSCluster
+  ServiceName:
+    Value: !Ref ECSService
+  TaskDefinition:
+    Value: !Ref ECSTaskDefinition
